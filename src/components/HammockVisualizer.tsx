@@ -1,0 +1,441 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Camera, Palette, Sparkles, CheckCircle2 } from "lucide-react";
+import type {
+  ProductDefinition,
+  ProductSizeSpec,
+  TactelColor,
+} from "@/data/products";
+
+interface HammockVisualizerProps {
+  product: ProductDefinition;
+  selectedColor: TactelColor;
+  selectedSize: ProductSizeSpec;
+}
+
+const ALL_REAL_PHOTOS = [
+  {
+    url: "/images/rede-azul-varanda.jpg",
+    title: "Azul Royal na Varanda",
+    subtitle: "Leque de cordas brancas 2,5mm nas casinhas costuradas",
+  },
+  {
+    url: "/images/hero-casal-jardim.jpg",
+    title: "Rosa Pink / Magenta no Jardim",
+    subtitle: "Espaço e resistência para descansar a dois",
+  },
+  {
+    url: "/images/rede-turquesa-sol.jpg",
+    title: "Azul Turquesa na Piscina",
+    subtitle: "Tecido Tactel que seca rápido e bolsinho lateral",
+  },
+  {
+    url: "/images/rede-vermelha-suporte.jpg",
+    title: "Vermelho Vivo no Suporte",
+    subtitle: "Caimento perfeito com bolsinho porta-objetos integrado",
+  },
+  {
+    url: "/images/rede-amarela-detalhe-punho.jpg",
+    title: "Detalhe do Punho e Bolsinho (Amarelo Sol)",
+    subtitle: "Casinhas reforçadas + Corda Polipropileno 2,5mm c/ UV",
+  },
+  {
+    url: "/images/rede-mosquiteiro-verde.jpg",
+    title: "Rede c/ Mosquiteiro (Verde Militar)",
+    subtitle: "Cúpula respirável 360° com zíper duplo para sítio e camping",
+  },
+];
+
+export function HammockVisualizer({
+  product,
+  selectedColor,
+  selectedSize,
+}: HammockVisualizerProps) {
+  const [viewMode, setViewMode] = useState<"photos" | "simulator">("photos");
+  const [activePhotoUrl, setActivePhotoUrl] = useState<string>(
+    product.hasMosquitoNet
+      ? "/images/rede-mosquiteiro-verde.jpg"
+      : selectedColor.photoUrl
+  );
+
+  // Atualiza a foto automaticamente quando o usuário troca o modelo ou a cor
+  useEffect(() => {
+    if (product.hasMosquitoNet) {
+      setActivePhotoUrl("/images/rede-mosquiteiro-verde.jpg");
+    } else {
+      setActivePhotoUrl(selectedColor.photoUrl);
+    }
+  }, [product.hasMosquitoNet, selectedColor.photoUrl]);
+
+  const activePhotoMeta =
+    ALL_REAL_PHOTOS.find((p) => p.url === activePhotoUrl) || ALL_REAL_PHOTOS[0];
+
+  return (
+    <div className="rounded-[28px] bg-white border border-[#E6DEC8] shadow-sm overflow-hidden">
+      {/* Cabeçalho da Galeria: Alternador Fotos Reais vs. Simulador de Cor */}
+      <div className="px-4 py-3 sm:px-6 bg-[#FDFBF7] border-b border-[#EFE8D8] flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("photos")}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+              viewMode === "photos"
+                ? "bg-[#2C1E18] text-white shadow-2xs"
+                : "bg-[#F3ECE0] text-[#5C4438] hover:bg-[#E8DFCE]"
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            Fotos Reais ({ALL_REAL_PHOTOS.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("simulator")}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+              viewMode === "simulator"
+                ? "bg-[#2C1E18] text-white shadow-2xs"
+                : "bg-[#F3ECE0] text-[#5C4438] hover:bg-[#E8DFCE]"
+            }`}
+          >
+            <Palette className="w-3.5 h-3.5" />
+            Simulador da Cor Escolhida
+          </button>
+        </div>
+
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1E4620] bg-[#E9F3E8] px-3 py-1 rounded-full">
+          <Sparkles className="w-3.5 h-3.5" />
+          Tam. {selectedSize.code} • Até {selectedSize.capacityKg}kg
+        </span>
+      </div>
+
+      {/* MODO 1: GALERIA DE FOTOS REAIS */}
+      {viewMode === "photos" ? (
+        <div>
+          <div className="relative aspect-[4/3] sm:aspect-[16/11] w-full bg-[#F5EFE6] overflow-hidden">
+            <img
+              src={activePhotoUrl}
+              alt={activePhotoMeta.title}
+              className="w-full h-full object-cover transition-all duration-500"
+            />
+
+            {/* Gradiente suave na base da foto para leitura da legenda */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
+
+            {/* Selo Flutuante da Cor e Modelo Selecionados pelo Cliente */}
+            <div className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 bg-white/95 backdrop-blur-md rounded-2xl p-2.5 pr-4 shadow-md border border-black/10 flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl shadow-inner border border-black/15 shrink-0"
+                style={{
+                  background: `linear-gradient(135deg, ${selectedColor.hex} 0%, ${selectedColor.accentHex} 100%)`,
+                }}
+              />
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6D58] block leading-none">
+                  Sua Escolha Atual:
+                </span>
+                <span className="text-xs sm:text-sm font-extrabold text-[#2C1E18] block mt-0.5">
+                  {selectedColor.name}
+                </span>
+                <span className="text-[11px] font-semibold text-[#1E4620] block">
+                  {product.shortName} • Tam. {selectedSize.code}
+                </span>
+              </div>
+            </div>
+
+            {/* Legenda da Foto Ativa */}
+            <div className="absolute bottom-3.5 left-4 right-4 flex items-end justify-between gap-3 text-white">
+              <div>
+                <p className="text-sm sm:text-base font-extrabold drop-shadow-xs">
+                  {activePhotoMeta.title}
+                </p>
+                <p className="text-xs text-white/90 drop-shadow-xs">
+                  {activePhotoMeta.subtitle}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tira de Miniaturas Clicáveis (6 Fotos Reais) */}
+          <div className="p-3 sm:p-4 bg-[#FDFBF7] border-t border-[#EFE8D8]">
+            <p className="text-[11px] font-bold text-[#7A6252] mb-2 uppercase tracking-wider">
+              Toque nas fotos abaixo para ver mais ângulos e detalhes:
+            </p>
+            <div className="grid grid-cols-6 gap-2">
+              {ALL_REAL_PHOTOS.map((photo) => {
+                const isCurrent = photo.url === activePhotoUrl;
+                return (
+                  <button
+                    key={photo.url}
+                    type="button"
+                    onClick={() => setActivePhotoUrl(photo.url)}
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                      isCurrent
+                        ? "border-[#D95D39] ring-2 ring-[#D95D39]/30 scale-[1.03]"
+                        : "border-transparent opacity-75 hover:opacity-100"
+                    }`}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* MODO 2: SIMULADOR FIEL DO FORMATO DA REDE (CASINHAS + LEQUE DE CORDAS BRANCAS + BOLSINHO) */
+        <div className="p-5 sm:p-8 bg-gradient-to-b from-[#FAF6F0] to-[#F3ECE0]">
+          <div className="text-center mb-2">
+            <span className="text-xs font-bold text-[#8C6D58]">
+              Simulação da cor{" "}
+              <strong className="text-[#2C1E18]">{selectedColor.name}</strong>{" "}
+              com punhos brancos 2,5mm e bolsinho lateral
+            </span>
+          </div>
+
+          <svg
+            viewBox="0 0 720 330"
+            className="w-full h-auto drop-shadow-md"
+            role="img"
+            aria-label={`${product.name} na cor ${selectedColor.name}`}
+          >
+            <defs>
+              <linearGradient
+                id="tactelClothGrad"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stopColor={selectedColor.hex} />
+                <stop offset="50%" stopColor={selectedColor.accentHex} />
+                <stop offset="100%" stopColor={selectedColor.hex} />
+              </linearGradient>
+              <pattern
+                id="netPattern"
+                width="6"
+                height="6"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 6 0 L 0 6 M 0 0 L 6 6"
+                  stroke="#1f2937"
+                  strokeWidth="0.5"
+                  strokeOpacity="0.42"
+                />
+              </pattern>
+            </defs>
+
+            {/* Mourões de madeira rústica nas extremidades */}
+            <rect x="14" y="25" width="22" height="285" rx="6" fill="#5C3A21" />
+            <rect x="684" y="25" width="22" height="285" rx="6" fill="#5C3A21" />
+
+            {/* Sombra suave no gramado */}
+            <ellipse
+              cx="360"
+              cy="300"
+              rx="230"
+              ry="14"
+              fill="#2C1E18"
+              opacity="0.12"
+            />
+
+            {/* Cúpula do Mosquiteiro caso seja a Rede c/ Mosquiteiro */}
+            {product.hasMosquitoNet && (
+              <g>
+                <path
+                  d="M 155 135 Q 360 15 565 135 Q 490 210 360 215 Q 230 210 155 135 Z"
+                  fill="url(#netPattern)"
+                  stroke="#1f2937"
+                  strokeWidth="2"
+                />
+                {/* Arcos estruturais e linha do zíper */}
+                <path
+                  d="M 250 82 Q 360 25 470 82"
+                  fill="none"
+                  stroke="#111827"
+                  strokeWidth="2.5"
+                />
+                <path
+                  d="M 160 140 Q 360 175 560 140"
+                  fill="none"
+                  stroke="#111827"
+                  strokeWidth="3"
+                  strokeDasharray="5 2"
+                />
+              </g>
+            )}
+
+            {/* LEQUE DE 12 CORDAS BRANCAS 2,50MM ESQUERDO (Passando pelas casinhas do Tactel) */}
+            <g>
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((idx) => {
+                const targetX = 148 + idx * 3.5;
+                const targetY = 116 + idx * 6.2;
+                return (
+                  <g key={`left-cord-${idx}`}>
+                    <line
+                      x1="36"
+                      y1="72"
+                      x2={targetX}
+                      y2={targetY}
+                      stroke="#cbd5e1"
+                      strokeWidth="3.2"
+                    />
+                    <line
+                      x1="36"
+                      y1="72"
+                      x2={targetX}
+                      y2={targetY}
+                      stroke="#ffffff"
+                      strokeWidth="2.2"
+                    />
+                  </g>
+                );
+              })}
+              {/* Olhal branco trançado no gancho */}
+              <circle
+                cx="36"
+                cy="72"
+                r="7"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="4"
+              />
+            </g>
+
+            {/* LEQUE DE 12 CORDAS BRANCAS 2,50MM DIREITO */}
+            <g>
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((idx) => {
+                const targetX = 572 - idx * 3.5;
+                const targetY = 116 + idx * 6.2;
+                return (
+                  <g key={`right-cord-${idx}`}>
+                    <line
+                      x1="684"
+                      y1="72"
+                      x2={targetX}
+                      y2={targetY}
+                      stroke="#cbd5e1"
+                      strokeWidth="3.2"
+                    />
+                    <line
+                      x1="684"
+                      y1="72"
+                      x2={targetX}
+                      y2={targetY}
+                      stroke="#ffffff"
+                      strokeWidth="2.2"
+                    />
+                  </g>
+                );
+              })}
+              <circle
+                cx="684"
+                cy="72"
+                r="7"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="4"
+              />
+            </g>
+
+            {/* CORPO DA REDE EM TACTEL COM DOBRAS LONGITUDINAIS AUTÊNTICAS */}
+            <path
+              d="M 148 116 Q 360 198 572 116 Q 515 270 360 276 Q 205 270 148 116 Z"
+              fill="url(#tactelClothGrad)"
+            />
+
+            {/* Linhas de dobras longitudinais típicas do Tactel */}
+            {[135, 152, 168, 184, 200].map((yOffset, i) => (
+              <path
+                key={i}
+                d={`M ${155 + i * 7} ${122 + i * 10} Q 360 ${
+                  yOffset + 65
+                } ${565 - i * 7} ${122 + i * 10}`}
+                fill="none"
+                stroke={
+                  i % 2 === 0 ? "rgba(255,255,255,0.26)" : "rgba(0,0,0,0.18)"
+                }
+                strokeWidth="2.5"
+              />
+            ))}
+
+            {/* Casinhas franzidas nas duas extremidades do tecido Tactel */}
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((idx) => (
+              <g key={`pleats-${idx}`}>
+                <circle
+                  cx={148 + idx * 3.5}
+                  cy={116 + idx * 6.2}
+                  r="4.2"
+                  fill={selectedColor.hex}
+                  stroke="rgba(0,0,0,0.25)"
+                  strokeWidth="1"
+                />
+                <circle
+                  cx={572 - idx * 3.5}
+                  cy={116 + idx * 6.2}
+                  r="4.2"
+                  fill={selectedColor.hex}
+                  stroke="rgba(0,0,0,0.25)"
+                  strokeWidth="1"
+                />
+              </g>
+            ))}
+
+            {/* BOLSINHO LATERAL INTEGRADO DO MESMO TECIDO TACTEL (SEM LOGO DE TERCEIROS) */}
+            <g transform="translate(245, 172) rotate(8)">
+              <rect
+                x="0"
+                y="0"
+                width="54"
+                height="62"
+                rx="6"
+                fill={selectedColor.hex}
+                stroke="rgba(0,0,0,0.28)"
+                strokeWidth="1.5"
+              />
+              <line
+                x1="4"
+                y1="10"
+                x2="50"
+                y2="10"
+                stroke="rgba(255,255,255,0.35)"
+                strokeWidth="2"
+              />
+            </g>
+          </svg>
+        </div>
+      )}
+
+      {/* Barra Inferior com as Medidas Reais do Tamanho Selecionado */}
+      <div className="p-3.5 sm:px-6 bg-white border-t border-[#EFE8D8] grid grid-cols-3 gap-2 text-center">
+        <div className="p-2 rounded-2xl bg-[#FAF6F0]">
+          <span className="text-[11px] text-[#7A6252] block">
+            Medida do Tecido
+          </span>
+          <strong className="text-xs sm:text-sm font-extrabold text-[#2C1E18]">
+            {selectedSize.clothDimensions.replace(" (Tecido)", "")}
+          </strong>
+        </div>
+        <div className="p-2 rounded-2xl bg-[#FAF6F0]">
+          <span className="text-[11px] text-[#7A6252] block">
+            Punho a Punho
+          </span>
+          <strong className="text-xs sm:text-sm font-extrabold text-[#2C1E18]">
+            {selectedSize.totalLengthWithCords.replace(" (Punho a Punho)", "")}
+          </strong>
+        </div>
+        <div className="p-2 rounded-2xl bg-[#E9F3E8]">
+          <span className="text-[11px] text-[#1E4620] block">Resistência</span>
+          <strong className="text-xs sm:text-sm font-extrabold text-[#1E4620] inline-flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> {selectedSize.capacityKg}{" "}
+            kg
+          </strong>
+        </div>
+      </div>
+    </div>
+  );
+}

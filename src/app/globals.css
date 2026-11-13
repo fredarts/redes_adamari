@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #faf6f0;
+  color: #2c1e18;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-serif-editorial {
+  font-family: var(--font-serif), Georgia, Cambria, "Times New Roman", Times,
+    serif;
+}
