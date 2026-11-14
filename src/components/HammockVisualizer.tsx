@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Camera,
   Palette,
@@ -76,6 +77,16 @@ export function HammockVisualizer({
       setActivePhotoUrl(selectedColor.photoUrl);
     }
   }, [product.hasMosquitoNet, selectedColor.photoUrl]);
+
+  // Fecha o zoom ao pressionar a tecla ESC
+  useEffect(() => {
+    if (!isZoomOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsZoomOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isZoomOpen]);
 
   const activePhotoIndex = Math.max(
     0,
@@ -497,53 +508,78 @@ export function HammockVisualizer({
         </div>
       </div>
 
-      {/* LIGHTBOX DE TELA CHEIA PARA INSPEÇÃO DAS FOTOS */}
-      {isZoomOpen && (
-        <div className="fixed inset-0 z-50 bg-[#1A110D]/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-          <button
-            type="button"
+      {/* LIGHTBOX DE TELA CHEIA PARA INSPEÇÃO DAS FOTOS (PORTAL NO BODY) */}
+      {isZoomOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
             onClick={() => setIsZoomOpen(false)}
-            className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white transition cursor-pointer"
-            aria-label="Fechar zoom"
+            className="fixed inset-0 z-[9999] bg-[#1A110D]/92 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 cursor-zoom-out"
           >
-            <X className="w-6 h-6" />
-          </button>
+            {/* Barra Superior do Zoom com Botão Fechar de Alto Contraste */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-4xl flex items-center justify-between mb-3 z-20"
+            >
+              <span className="text-xs sm:text-sm font-bold text-[#FAF6F0]/90 bg-white/10 px-3.5 py-1.5 rounded-full">
+                Foto {activePhotoIndex + 1} de {ALL_REAL_PHOTOS.length} • Clique
+                fora ou na foto para fechar
+              </span>
 
-          <button
-            type="button"
-            onClick={handlePrevPhoto}
-            className="absolute left-3 sm:left-6 z-20 p-3 rounded-full bg-white/15 hover:bg-white/25 text-white transition cursor-pointer"
-            aria-label="Foto anterior"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleNextPhoto}
-            className="absolute right-3 sm:right-6 z-20 p-3 rounded-full bg-white/15 hover:bg-white/25 text-white transition cursor-pointer"
-            aria-label="Próxima foto"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-
-          <div className="max-w-4xl w-full flex flex-col items-center">
-            <img
-              src={activePhotoUrl}
-              alt={activePhotoMeta.title}
-              className="max-h-[78vh] w-auto rounded-3xl shadow-2xl border-2 border-white/20 object-contain"
-            />
-            <div className="mt-4 text-center text-white">
-              <h4 className="font-serif-editorial text-lg sm:text-xl font-bold">
-                {activePhotoMeta.title}
-              </h4>
-              <p className="text-xs sm:text-sm text-[#E6DEC8] mt-0.5">
-                {activePhotoMeta.subtitle}
-              </p>
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(false)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D95D39] hover:bg-[#C04B29] text-white font-extrabold text-xs sm:text-sm shadow-lg transition cursor-pointer"
+                aria-label="Fechar zoom"
+              >
+                <span>Fechar</span>
+                <X className="w-4 h-4 stroke-[3]" />
+              </button>
             </div>
-          </div>
-        </div>
-      )}
+
+            {/* Área Central da Imagem + Setas */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl w-full flex flex-col items-center cursor-default"
+            >
+              <button
+                type="button"
+                onClick={handlePrevPhoto}
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-[#2C1E18]/85 hover:bg-[#D95D39] text-white border border-white/20 shadow-lg transition cursor-pointer"
+                aria-label="Foto anterior"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+
+              <img
+                src={activePhotoUrl}
+                alt={activePhotoMeta.title}
+                onClick={() => setIsZoomOpen(false)}
+                title="Clique para fechar"
+                className="max-h-[72vh] w-auto rounded-3xl shadow-2xl border-2 border-white/25 object-contain cursor-zoom-out"
+              />
+
+              <button
+                type="button"
+                onClick={handleNextPhoto}
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-[#2C1E18]/85 hover:bg-[#D95D39] text-white border border-white/20 shadow-lg transition cursor-pointer"
+                aria-label="Próxima foto"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+
+              <div className="mt-3 text-center text-white">
+                <h4 className="font-serif-editorial text-lg sm:text-xl font-bold">
+                  {activePhotoMeta.title}
+                </h4>
+                <p className="text-xs sm:text-sm text-[#E6DEC8] mt-0.5">
+                  {activePhotoMeta.subtitle}
+                </p>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }
