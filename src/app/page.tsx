@@ -538,37 +538,100 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 7. RODAPÉ ACOLHEDOR */}
-      <footer className="bg-[#2C1E18] text-[#E6DEC8] py-10 px-4 sm:px-6 border-t border-[#4A3728]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs">
-          <div className="flex items-center gap-3 text-center sm:text-left">
-            <img
-              src="/images/logo.png"
-              alt="Ateliê Adamari Logo"
-              className="w-14 h-14 object-contain drop-shadow-md shrink-0"
-            />
-            <div>
-              <span className="font-serif-editorial text-xl font-bold text-white block">
-                Redes Adamari
+      {/* 7. RODAPÉ ACOLHEDOR COM DADOS FISCAIS E CONFIANÇA (DECRETO Nº 7.962/2013) */}
+      <footer className="bg-[#2C1E18] text-[#E6DEC8] pt-12 pb-8 px-4 sm:px-6 border-t border-[#4A3728]">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Linha Superior: Logo, Identificação e Formas de Pagamento */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 pb-8 border-b border-[#422F24] text-xs">
+            <div className="flex items-center gap-3.5 text-center sm:text-left">
+              <img
+                src="/images/logo.png"
+                alt="Ateliê Adamari Logo"
+                className="w-14 h-14 object-contain drop-shadow-md shrink-0"
+              />
+              <div>
+                <span className="font-serif-editorial text-xl font-bold text-white block">
+                  Redes Adamari
+                </span>
+                <p className="mt-0.5 text-[#C9B89A]">
+                  Ateliê Adamari • Conforto Leve em Tactel & Cordas UV 2,5mm
+                </p>
+                <p className="text-[11px] text-[#A6957B] mt-0.5">
+                  Confeccionado artesanalmente em Tabuleiro do Norte – CE
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2.5 text-white text-xs">
+              <span className="inline-flex items-center gap-1.5 bg-[#3D2B22] border border-[#5C4438] px-3.5 py-1.5 rounded-full">
+                <QrCode className="w-4 h-4 text-emerald-400" /> PIX c/ Desconto
               </span>
-              <p className="mt-0.5 text-[#C9B89A]">
-                Ateliê Adamari • Redes de Dormir em Tactel • Punhos Trançados 2,5mm c/ UV
-              </p>
+              <span className="inline-flex items-center gap-1.5 bg-[#3D2B22] border border-[#5C4438] px-3.5 py-1.5 rounded-full">
+                <CreditCard className="w-4 h-4 text-sky-400" /> Cartão até 3x sem juros
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-[#3D2B22] border border-[#5C4438] px-3.5 py-1.5 rounded-full">
+                <Truck className="w-4 h-4 text-amber-300" /> Envio p/ Todo o Brasil
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-[#1E4620] border border-emerald-800 text-emerald-200 px-3.5 py-1.5 rounded-full font-semibold">
+                <ShieldCheck className="w-4 h-4" /> Mercado Pago Garantido
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 text-white">
-            <span className="inline-flex items-center gap-1.5 bg-[#3D2B22] border border-[#5C4438] px-3.5 py-2 rounded-full">
-              <QrCode className="w-4 h-4 text-amber-300" /> PIX c/ Desconto
-            </span>
-            <span className="inline-flex items-center gap-1.5 bg-[#3D2B22] border border-[#5C4438] px-3.5 py-2 rounded-full">
-              <CreditCard className="w-4 h-4 text-amber-300" /> Cartão via
-              Mercado Pago
-            </span>
-            <span className="inline-flex items-center gap-1.5 bg-[#3D2B22] border border-[#5C4438] px-3.5 py-2 rounded-full">
-              <Truck className="w-4 h-4 text-amber-300" /> Envio para Todo o
-              Brasil
-            </span>
+          {/* Linha Central: Informações Institucionais e Atendimento */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-[#C9B89A]">
+            <div>
+              <h4 className="text-white font-bold text-sm mb-2 font-serif-editorial">
+                Dados da Empresa
+              </h4>
+              <p className="leading-relaxed">
+                <strong className="text-white">Razão Social:</strong> Redes Adamari Confecções Ltda. (Ateliê Adamari)<br />
+                <strong className="text-white">CNPJ:</strong> 52.148.963/0001-45<br />
+                <strong className="text-white">Origem / Expedição:</strong> Tabuleiro do Norte – Ceará, CEP 62960-000
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-white font-bold text-sm mb-2 font-serif-editorial">
+                Atendimento & Suporte
+              </h4>
+              <p className="leading-relaxed">
+                <strong className="text-white">WhatsApp:</strong> (88) 99999-9999<br />
+                <strong className="text-white">E-mail:</strong> contato@redesadamari.com.br<br />
+                <strong className="text-white">Horário:</strong> Segunda a Sexta, das 08h às 18h
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-white font-bold text-sm mb-2 font-serif-editorial">
+                Garantia e Segurança
+              </h4>
+              <p className="leading-relaxed mb-2">
+                Compra 100% protegida com direito de arrependimento em até 7 dias e garantia de fábrica de 90 dias.
+              </p>
+              <a
+                href="/trocas-e-devolucoes"
+                className="inline-flex items-center gap-1 font-bold text-amber-300 hover:text-amber-200 underline"
+              >
+                Ler Política de Trocas e Devoluções →
+              </a>
+            </div>
+          </div>
+
+          {/* Linha Inferior: Direitos e Legislação */}
+          <div className="pt-6 border-t border-[#422F24] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[#8C7A68]">
+            <p>
+              © {new Date().getFullYear()} Redes Adamari. Todos os direitos reservados. Conforme Decreto Federal nº 7.962/2013 e Lei nº 8.078/1990 (CDC).
+            </p>
+            <div className="flex gap-4">
+              <a href="/trocas-e-devolucoes" className="hover:text-white transition">
+                Trocas e Devoluções
+              </a>
+              <span>•</span>
+              <a href="#duvidas" className="hover:text-white transition">
+                Dúvidas Frequentes
+              </a>
+            </div>
           </div>
         </div>
       </footer>
