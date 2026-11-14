@@ -55,12 +55,16 @@ export function ProductConfigurator() {
   return (
     <section
       id="configurador"
-      className="scroll-mt-20 py-12 sm:py-16 px-4 sm:px-6 max-w-7xl mx-auto"
+      className="relative scroll-mt-24 py-12 sm:py-16 px-4 sm:px-6 max-w-7xl mx-auto"
     >
+      {/* Brilho solar sutil de fundo */}
+      <div className="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 w-[85%] h-72 rounded-full bg-gradient-to-r from-amber-300/15 via-orange-300/15 to-rose-300/10 blur-3xl -z-10" />
+
       {/* Cabeçalho Acolhedor da Seção */}
       <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F5E6D3] text-[#9C5221] px-4 py-1 text-xs font-bold uppercase tracking-wider mb-3">
-          <Sparkles className="w-3.5 h-3.5" /> Escolha do Seu Jeito
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#F5E6D3] to-[#F9EFE2] border border-[#E6D2B5] text-[#9C5221] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-2xs">
+          <Sparkles className="w-3.5 h-3.5 text-[#D95D39]" /> Escolha do Seu
+          Jeito
         </span>
         <h2 className="font-serif-editorial text-2xl sm:text-4xl font-bold text-[#2C1E18] tracking-tight">
           Monte sua Rede Adamari em 3 passos simples
@@ -91,23 +95,23 @@ export function ProductConfigurator() {
                   setSelectedColorId("verde-militar");
                 }
               }}
-              className={`group text-left rounded-[26px] overflow-hidden border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-stretch ${
+              className={`group text-left rounded-[28px] overflow-hidden border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-stretch ${
                 isSelected
-                  ? "border-[#D95D39] bg-white shadow-lg ring-4 ring-[#D95D39]/15"
-                  : "border-[#E6DEC8] bg-[#FDFBF7] hover:border-[#D4C5A9]"
+                  ? "border-[#D95D39] bg-white shadow-warm-lg ring-4 ring-[#D95D39]/15"
+                  : "border-[#E6DEC8] bg-[#FDFBF7] hover:border-[#D4C5A9] shadow-warm"
               }`}
             >
               {/* Foto Real na lateral/topo do Card */}
-              <div className="sm:w-44 h-44 sm:h-auto relative shrink-0 overflow-hidden bg-[#F5EFE6]">
+              <div className="sm:w-46 h-46 sm:h-auto relative shrink-0 overflow-hidden bg-[#F5EFE6]">
                 <img
                   src={item.coverPhoto}
                   alt={item.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <span
-                  className={`absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-xs ${
+                  className={`absolute top-3 left-3 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full shadow-xs ${
                     isSelected
-                      ? "bg-[#D95D39] text-white"
+                      ? "bg-solar-gradient text-white"
                       : "bg-white/95 text-[#2C1E18]"
                   }`}
                 >
@@ -123,9 +127,9 @@ export function ProductConfigurator() {
                       {item.name}
                     </h3>
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 ${
+                      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${
                         isSelected
-                          ? "bg-[#D95D39] border-[#D95D39] text-white"
+                          ? "bg-[#D95D39] border-[#D95D39] text-white shadow-xs"
                           : "border-[#D4C5A9] text-transparent"
                       }`}
                     >
@@ -157,7 +161,7 @@ export function ProductConfigurator() {
       {/* GRID PRINCIPAL: GALERIA DE FOTOS REAIS + SELETOR DE COR E TAMANHO */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
         {/* Coluna Esquerda: Galeria de Fotos Reais + Simulador (7 colunas) */}
-        <div className="lg:col-span-7 lg:sticky lg:top-24 space-y-4">
+        <div className="lg:col-span-7 lg:sticky lg:top-26 space-y-4">
           <HammockVisualizer
             product={product}
             selectedColor={selectedColor}
@@ -165,7 +169,7 @@ export function ProductConfigurator() {
           />
 
           {/* Destaques do modelo escolhido */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white rounded-3xl p-4 sm:p-5 border border-[#E6DEC8]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white rounded-3xl p-4 sm:p-5 border border-[#E6DEC8] shadow-warm">
             {product.highlights.map((hl, idx) => (
               <div key={idx} className="flex items-start gap-2.5 text-xs">
                 <CheckCircle2 className="w-4 h-4 text-[#1E4620] shrink-0 mt-0.5" />
@@ -178,11 +182,11 @@ export function ProductConfigurator() {
         </div>
 
         {/* Coluna Direita: Painel de Escolha de Cor, Tamanho e Compra (5 colunas) */}
-        <div className="lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-7 border border-[#E6DEC8] shadow-sm space-y-6">
+        <div className="lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-7 border border-[#E6DEC8] shadow-warm space-y-6">
           {/* Título e Bloco de Preço */}
           <div className="border-b border-[#EFE8D8] pb-5">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#1E4620] bg-[#E9F3E8] px-3 py-1 rounded-full">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1E4620] bg-[#E9F3E8] border border-[#C6E2C3] px-3 py-1 rounded-full">
                 Fabricação Própria • Pronta Entrega
               </span>
               <span className="text-xs text-[#7A6252] font-semibold">
@@ -190,12 +194,12 @@ export function ProductConfigurator() {
               </span>
             </div>
 
-            <h3 className="font-serif-editorial text-xl sm:text-2xl font-bold text-[#2C1E18] mt-2">
+            <h3 className="font-serif-editorial text-xl sm:text-2xl font-bold text-[#2C1E18] mt-2.5">
               {product.name}
             </h3>
 
             {/* Preço em Destaque Acolhedor */}
-            <div className="mt-4 p-4 rounded-2xl bg-[#F4F9F3] border border-[#C6E2C3]">
+            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-[#F4F9F3] via-[#ECF6EA] to-[#E3F1E0] border border-[#C6E2C3] shadow-2xs">
               <div className="flex items-baseline justify-between gap-2">
                 <div>
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1E4620]">
@@ -210,13 +214,13 @@ export function ProductConfigurator() {
                   <span className="text-xs text-[#8C6D58] line-through block">
                     {formatBRL(sizeSpec.priceCard)}
                   </span>
-                  <span className="inline-block text-[11px] font-bold bg-[#1E4620] text-white px-2.5 py-0.5 rounded-full mt-1">
+                  <span className="inline-block text-[11px] font-bold bg-[#1E4620] text-white px-2.5 py-0.5 rounded-full mt-1 shadow-2xs">
                     Economize {formatBRL(sizeSpec.priceCard - sizeSpec.pricePix)}
                   </span>
                 </div>
               </div>
 
-              <div className="mt-2.5 pt-2.5 border-t border-[#D5EBD3] flex items-center gap-1.5 text-xs text-[#4A3728]">
+              <div className="mt-2.5 pt-2.5 border-t border-[#C6E2C3] flex items-center gap-1.5 text-xs text-[#4A3728]">
                 <CreditCard className="w-3.5 h-3.5 text-[#1E4620] shrink-0" />
                 <span>
                   Ou <strong>{formatBRL(sizeSpec.priceCard)}</strong> no cartão
@@ -227,13 +231,17 @@ export function ProductConfigurator() {
             </div>
           </div>
 
-          {/* PASSO 2: AS 10 CORES DO TECIDO TACTEL */}
+          {/* PASSO 2: AS 10 CORES DO TECIDO TACTEL COM BRILHO ACETINADO */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-bold text-[#2C1E18]">
                 1. Escolha a Cor do Tactel:
               </label>
-              <span className="text-xs font-bold text-[#9C5221] bg-[#F5E6D3] px-3 py-1 rounded-full">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9C5221] bg-[#F5E6D3] border border-[#E6D2B5] px-3 py-1 rounded-full">
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-black/20"
+                  style={{ backgroundColor: selectedColor.hex }}
+                />
                 {selectedColor.name}
               </span>
             </div>
@@ -249,17 +257,17 @@ export function ProductConfigurator() {
                     title={color.name}
                     className={`group flex flex-col items-center p-1.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? "border-[#D95D39] bg-[#FDF8F2] shadow-xs scale-[1.03]"
+                        ? "border-[#D95D39] bg-[#FDF8F2] ring-2 ring-[#D95D39]/25 scale-[1.03]"
                         : "border-[#E6DEC8] hover:border-[#C9B89A] bg-white"
                     }`}
                   >
                     <span
-                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-inner border border-black/15 relative transition-transform group-hover:scale-105"
+                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-inner border border-black/15 relative transition-transform group-hover:scale-105 tactel-swatch-sheen"
                       style={{ backgroundColor: color.hex }}
                     >
                       {isSelected && (
                         <Check
-                          className={`w-5 h-5 stroke-[3] ${
+                          className={`w-5 h-5 stroke-[3] drop-shadow-xs ${
                             color.id === "amarelo-sol"
                               ? "text-[#2C1E18]"
                               : "text-white"
@@ -275,7 +283,7 @@ export function ProductConfigurator() {
                 );
               })}
             </div>
-            <p className="text-[11px] text-[#7A6252] mt-2">
+            <p className="text-[11px] text-[#7A6252] mt-2.5">
               * Todas as redes vêm com{" "}
               <strong className="text-[#2C1E18]">
                 bolsinho lateral na mesma cor
@@ -313,11 +321,11 @@ export function ProductConfigurator() {
                     onClick={() => setSelectedSizeCode(code)}
                     className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                       isSelected
-                        ? "border-[#2C1E18] bg-[#2C1E18] text-white shadow-sm"
+                        ? "border-[#2C1E18] bg-[#2C1E18] text-white shadow-md scale-[1.02]"
                         : "border-[#E6DEC8] bg-[#FAF6F0] text-[#2C1E18] hover:border-[#C9B89A]"
                     }`}
                   >
-                    <span className="text-lg font-black tracking-tight">
+                    <span className="font-serif-editorial text-lg font-bold tracking-tight">
                       {code}
                     </span>
                     <span
@@ -336,8 +344,8 @@ export function ProductConfigurator() {
             <div className="mt-3 p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] text-xs space-y-1.5">
               <div className="flex items-center justify-between font-bold text-[#2C1E18]">
                 <span>{sizeSpec.title}</span>
-                <span className="text-[#1E4620]">
-                  Suporta até {sizeSpec.capacityKg} kg
+                <span className="text-[#1E4620] bg-[#E9F3E8] px-2 py-0.5 rounded-full">
+                  Até {sizeSpec.capacityKg} kg
                 </span>
               </div>
               <p className="text-[#5C4438]">{sizeSpec.recommendedFor}</p>
@@ -361,7 +369,7 @@ export function ProductConfigurator() {
             </div>
           </div>
 
-          {/* BOTÃO DE COMPRA */}
+          {/* BOTÃO DE COMPRA COM GRADIENTE PÔR DO SOL */}
           <div className="pt-1 space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center border border-[#D4C5A9] rounded-2xl bg-[#FAF6F0] p-1">
@@ -389,7 +397,7 @@ export function ProductConfigurator() {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="flex-1 h-13 rounded-2xl bg-[#D95D39] hover:bg-[#C04B29] active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-md shadow-[#D95D39]/25 flex items-center justify-center gap-2 px-5 transition-all cursor-pointer"
+                className="flex-1 h-13 rounded-2xl bg-solar-gradient active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#D95D39]/30 flex items-center justify-center gap-2 px-5 transition-all cursor-pointer"
               >
                 {justAdded ? (
                   <>

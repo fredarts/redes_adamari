@@ -15,3 +15,52 @@ body {
   font-family: var(--font-serif), Georgia, Cambria, "Times New Roman", Times,
     serif;
 }
+
+/* Gradiente Pôr do Sol inspirado na Logo do Ateliê Adamari */
+.bg-solar-gradient {
+  background-image: linear-gradient(
+    135deg,
+    #d95d39 0%,
+    #e66f33 50%,
+    #f09837 100%
+  );
+}
+
+.bg-solar-gradient:hover {
+  background-image: linear-gradient(
+    135deg,
+    #c04b29 0%,
+    #d95d39 50%,
+    #e68225 100%
+  );
+}
+
+/* Sombras orgânicas quentes (em tom madeira/café em vez de cinza frio) */
+.shadow-warm {
+  box-shadow: 0 14px 34px -10px rgba(44, 30, 24, 0.09),
+    0 4px 12px -3px rgba(44, 30, 24, 0.05);
+}
+
+.shadow-warm-lg {
+  box-shadow: 0 22px 50px -12px rgba(44, 30, 24, 0.16),
+    0 8px 20px -6px rgba(44, 30, 24, 0.08);
+}
+
+/* Reflexo acetinado nas bolinhas de cor para simular o brilho do tecido Tactel */
+.tactel-swatch-sheen {
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.32) 0%,
+    rgba(255, 255, 255, 0) 48%,
+    rgba(0, 0, 0, 0.18) 100%
+  );
+}
+
+/* Ocultar barra de rolagem horizontal na navegação rápida mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
