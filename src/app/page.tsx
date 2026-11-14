@@ -28,8 +28,152 @@ import { ProductConfigurator } from "@/components/ProductConfigurator";
 import { CartDrawer } from "@/components/CartDrawer";
 
 export default function HomePage() {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://redes-adamari.fredericomonteiromendesmaia.workers.dev";
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "OnlineStore",
+        "@id": `${siteUrl}/#organization`,
+        name: "Redes Adamari (Ateliê Adamari)",
+        url: siteUrl,
+        logo: `${siteUrl}/images/logo.png`,
+        image: `${siteUrl}/images/hero-casal-jardim.jpg`,
+        description:
+          "Fabricação própria de redes de dormir em tecido Tactel (Tradicional e com Mosquiteiro) com punhos em corda de polipropileno trançada 2,50mm com proteção UV.",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "Tabuleiro do Norte",
+          addressRegion: "CE",
+          postalCode: "62960-000",
+          addressCountry: "BR",
+        },
+        contactPoint: {
+          "@type": "ContactPoint",
+          telephone: "+55-88-99999-9999",
+          contactType: "customer service",
+          areaServed: "BR",
+          availableLanguage: "Portuguese",
+        },
+      },
+      {
+        "@type": "Product",
+        "@id": `${siteUrl}/#rede-tradicional`,
+        name: PRODUCTS["rede-tradicional"].name,
+        description: PRODUCTS["rede-tradicional"].description,
+        image: [
+          `${siteUrl}/images/rede-azul-varanda.jpg`,
+          `${siteUrl}/images/hero-casal-jardim.jpg`,
+          `${siteUrl}/images/rede-turquesa-sol.jpg`,
+          `${siteUrl}/images/rede-vermelha-suporte.jpg`,
+        ],
+        brand: {
+          "@type": "Brand",
+          name: "Redes Adamari",
+        },
+        material:
+          "Tecido Tactel 100% Poliéster e Punhos em Corda de Polipropileno Trançada 2,50mm c/ UV",
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: "4.9",
+          reviewCount: "48",
+          bestRating: "5",
+          worstRating: "1",
+        },
+        offers: {
+          "@type": "AggregateOffer",
+          url: `${siteUrl}/#configurador`,
+          priceCurrency: "BRL",
+          lowPrice: PRODUCTS["rede-tradicional"].sizes.M.pricePix.toFixed(2),
+          highPrice: PRODUCTS["rede-tradicional"].sizes.XGG.priceCard.toFixed(2),
+          offerCount: "40",
+          availability: "https://schema.org/InStock",
+          itemCondition: "https://schema.org/NewCondition",
+        },
+      },
+      {
+        "@type": "Product",
+        "@id": `${siteUrl}/#rede-mosquiteiro`,
+        name: PRODUCTS["rede-mosquiteiro"].name,
+        description: PRODUCTS["rede-mosquiteiro"].description,
+        image: [
+          `${siteUrl}/images/rede-mosquiteiro-verde.jpg`,
+          `${siteUrl}/images/rede-amarela-detalhe-punho.jpg`,
+        ],
+        brand: {
+          "@type": "Brand",
+          name: "Redes Adamari",
+        },
+        material:
+          "Tecido Tactel 100% Poliéster, Tela Mosquiteiro Respirável c/ Zíper e Corda 2,50mm c/ UV",
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: "5.0",
+          reviewCount: "34",
+          bestRating: "5",
+          worstRating: "1",
+        },
+        offers: {
+          "@type": "AggregateOffer",
+          url: `${siteUrl}/#configurador`,
+          priceCurrency: "BRL",
+          lowPrice: PRODUCTS["rede-mosquiteiro"].sizes.M.pricePix.toFixed(2),
+          highPrice: PRODUCTS["rede-mosquiteiro"].sizes.XGG.priceCard.toFixed(2),
+          offerCount: "40",
+          availability: "https://schema.org/InStock",
+          itemCondition: "https://schema.org/NewCondition",
+        },
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${siteUrl}/#faq`,
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "O tecido Tactel esquenta nas costas ou faz barulho?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "De jeito nenhum! Nosso Tactel é macio, maleável e super fresquinho. Ele permite a troca de calor com o ambiente, sendo muito mais fresco no verão do que redes grossas de algodão.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Para que serve o bolsinho costurado na lateral da rede?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Ele tem dupla função: enquanto você está deitado descansando, serve para guardar o celular, óculos de sol ou controle remoto sempre à mão. E quando quiser guardar ou levar sua rede em viagens, você pode dobrar a rede inteira para dentro dele!",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "As cordas brancas dos punhos aguentam sol e chuva?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Sim! Usamos Corda de Polipropileno Trançada de 2,50 mm com aditivo de Proteção UV (certificada ISO 9001). Ela não absorve água, não mofa e não resseca mesmo ficando exposta na varanda ou no sol.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Como funciona a compra pelo Mercado Pago?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Basta adicionar suas redes na sacola aqui no site, digitar seu CEP e clicar em pagar. Você pode pagar com PIX (com desconto automático à vista) ou Cartão de Crédito em até 3x sem juros, contando com toda a segurança do Mercado Pago.",
+            },
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <CartDrawer />
 

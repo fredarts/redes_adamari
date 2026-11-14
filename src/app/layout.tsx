@@ -21,23 +21,44 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Redes Adamari | Redes de Dormir em Tecido Tactel",
+    default:
+      "Redes Adamari | Redes de Dormir em Tactel (Tradicional e c/ Mosquiteiro)",
     template: "%s | Redes Adamari",
   },
   description:
-    "Redes de dormir leves, frescas e resistentes em tecido Tactel. Não esquentam nas costas, secam em minutos, com bolsinho lateral e punhos em cordas 2,50mm c/ proteção UV. Compre com PIX e Cartão pelo Mercado Pago.",
+    "Compre direto da fábrica em Tabuleiro do Norte - CE: Redes de dormir em tecido Tactel leves, frescas e resistentes em 10 cores vibrantes e tamanhos M, G, GG e XGG. Punhos em corda 2,50mm c/ proteção UV. Pague no PIX com desconto ou Cartão.",
   keywords: [
     "redes de dormir",
+    "rede de dormir tactel",
     "rede tactel",
-    "rede de descanso",
     "rede com mosquiteiro",
-    "rede leve camping",
+    "rede de dormir com mosquiteiro",
+    "rede tactel casal",
     "redes adamari",
-    "rede para varanda",
-    "rede que seca rapido",
+    "ateliê adamari",
+    "redes tabuleiro do norte",
+    "rede leve para camping",
+    "rede para varanda e piscina",
+    "rede que seca rápido",
   ],
-  authors: [{ name: "Ateliê Adamari" }],
+  authors: [{ name: "Ateliê Adamari — Tabuleiro do Norte, CE" }],
   creator: "Ateliê Adamari",
+  publisher: "Redes Adamari",
+  category: "shopping",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: "/images/logo.png",
     shortcut: "/images/logo.png",
@@ -48,7 +69,8 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     url: siteUrl,
     siteName: "Redes Adamari",
-    title: "Redes Adamari | Redes de Dormir em Tecido Tactel",
+    title:
+      "Redes Adamari | Redes de Dormir em Tecido Tactel (Tradicional e c/ Mosquiteiro)",
     description:
       "Redes de dormir leves, frescas e resistentes em tecido Tactel com bolsinho integrado e punhos em cordas trançadas 2,50mm c/ UV. Escolha sua cor e tamanho!",
     images: [
