@@ -21,23 +21,27 @@ interface SocialStudioRequest {
   aspectRatio: "1:1" | "9:16" | "16:9";
   scenePrompt: string;
   campaignFocus?: string;
+  apiKey?: string; // Chave opcional enviada diretamente do campo na tela Admin
 }
 
-function getReferencePhotoFilename(productId: ProductId, colorId: string): string {
+/**
+ * Mapeia as fotos reais capturadas do produto como imagem de referência principal
+ */
+function getReferencePhotoFilenames(productId: ProductId, colorId: string): string[] {
   if (productId === "rede-mosquiteiro") {
-    return "rede-mosquiteiro-verde.jpg";
+    return ["rede-mosquiteiro-verde.jpg", "rede-azul-varanda.jpg"];
   }
   switch (colorId) {
     case "azul-turquesa":
-      return "rede-turquesa-sol.jpg";
+      return ["rede-turquesa-sol.jpg", "rede-azul-varanda.jpg"];
     case "vermelho-vivo":
     case "rosa-pink":
     case "laranja-tropical":
-      return "rede-vermelha-suporte.jpg";
+      return ["rede-vermelha-suporte.jpg", "rede-amarela-detalhe-punho.jpg"];
     case "amarelo-sol":
-      return "rede-amarela-detalhe-punho.jpg";
+      return ["rede-amarela-detalhe-punho.jpg", "rede-vermelha-suporte.jpg"];
     default:
-      return "rede-azul-varanda.jpg";
+      return ["rede-azul-varanda.jpg", "rede-turquesa-sol.jpg"];
   }
 }
 
@@ -59,16 +63,29 @@ export async function POST(request: Request) {
       body.scenePrompt?.trim() ||
       "Varanda aconchegante com plantas tropicais e iluminação dourada de fim de tarde no Ceará";
 
-    const fullVisualPrompt = `Create a hyper-realistic commercial lifestyle photograph for the Brazilian hammock brand "Redes Adamari" (Ateliê Adamari).
-Show the exact "${product.name}" hammock in the vibrant "${color.name}" (${color.hex}) smooth Tactel polyester fabric, preserving its authentic physical construction from the reference image:
-1. Gathered pleated fabric hem ("bainha em casinhas franzidas") at both ends where thin white 2.50mm braided polypropylene cords pass through and fan out like a harp to a strong white loop.
-2. Integrated rectangular side pocket made of the exact same "${color.name}" Tactel fabric sewn cleanly onto the side of the hammock body (no third-party logos).
+    // PROMPT RIGOROSO: Garante Cordas Brancas e Tecido Tactel idênticos às fotos reais
+    const fullVisualPrompt = `[STRICT PRODUCT FIDELITY INSTRUCTION]
+You are generating a commercial photograph for the authentic Brazilian hammock manufacturer "Redes Adamari" (Ateliê Adamari, Tabuleiro do Norte - Ceará).
+You MUST inspect the attached reference image of the actual Redes Adamari hammock and preserve its exact material, color, and hardware construction with 100% precision:
+
+1. ROPES AND SUSPENSION (NON-NEGOTIABLE):
+- The cords/ropes MUST BE BRIGHT WHITE, thin 2.50mm braided polypropylene rope with UV protection.
+- NEVER generate colored, dark, rope, rope-twine, or thick cotton ropes.
+- The cords must pass through gathered pleats ("bainha em casinhas franzidas") at each end of the fabric body and fan out like harp strings into a strong white looped eyelet.
+
+2. FABRIC AND FINISH:
+- Fabric MUST BE 100% smooth, lightweight Tactel polyester in "${color.name}" (HEX: ${color.hex}), showing subtle satin sheen and crisp clean folds.
+- Integrated rectangular side pocket ("bolsinho lateral") made of the EXACT same "${color.name}" Tactel fabric cleanly stitched on the side of the hammock body.
+
 ${
   product.id === "rede-mosquiteiro"
-    ? "3. Full 360-degree breathable fine mosquito mesh canopy suspended above the hammock with dual side zipper closure."
+    ? "3. MOSQUITO NET: Fine breathable 360-degree white/light mesh dome canopy suspended cleanly above the hammock with two smooth zipper tracks."
     : ""
 }
-Scene & Atmosphere: ${userScene}. Warm editorial lighting, ultra-sharp fabric texture, inviting relaxation vibe.`;
+
+Scene and Environment:
+${userScene}.
+High-end commercial Brazilian lifestyle, warm natural afternoon sunlight, cozy relaxing atmosphere, ultra-sharp detail on fabric texture and white ropes.`;
 
     const defaultCaptions = [
       `✨ Imagine chegar em casa e relaxar na sua ${product.shortName} na cor ${color.name}!\n\nConfeccionada em Tabuleiro do Norte/CE com tecido 100% Tactel de toque macio:\n🌬️ Não esquenta nas costas\n⚡ Seca em poucos minutos\n📱 Bolsinho lateral integrado p/ celular\n🪢 Punhos com cordas brancas 2,50mm c/ proteção UV (Suporta até 220kg no tam. GG/XGG!)\n\n💚 Compre agora no site com desconto especial no PIX:\n👉 Link na bio!\n\n#RedesAdamari #RedeDeDormir #RedeTactel #AtelieAdamari #TabuleiroDoNorte #ConfortoEmCasa`,
@@ -76,11 +93,12 @@ Scene & Atmosphere: ${userScene}. Warm editorial lighting, ultra-sharp fabric te
       `🔥 Direto do nosso ateliê em Tabuleiro do Norte - CE para a sua varanda!\n\nOlha o capricho da ${product.shortName} na cor ${color.name} (${color.profile}). Cordas certificadas com proteção solar UV e costura tripla reforçada.\n\n📲 Chame no WhatsApp ou peça direto pelo site com pagamento seguro via Mercado Pago!`,
     ];
 
-    const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
-    const refFilename = getReferencePhotoFilename(product.id, color.id);
-    const refFilePath = path.join(process.cwd(), "public", "images", refFilename);
+    // Prioriza chave enviada pelo usuário no formulário da tela Admin, ou usa a env var
+    const geminiApiKey = (body.apiKey?.trim() || process.env.GEMINI_API_KEY?.trim()) || "";
+    const refFilenames = getReferencePhotoFilenames(product.id, color.id);
+    const primaryRefFilename = refFilenames[0];
 
-    // Se GEMINI_API_KEY estiver configurada, chama o Gemini Nano Banana 2.1 oficial
+    // Se GEMINI_API_KEY estiver configurada ou preenchida na tela:
     if (geminiApiKey && geminiApiKey.length > 10) {
       const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
@@ -89,13 +107,17 @@ Scene & Atmosphere: ${userScene}. Warm editorial lighting, ultra-sharp fabric te
         | { type: "image"; mime_type: string; data: string }
       > = [{ type: "text", text: fullVisualPrompt }];
 
-      if (fs.existsSync(refFilePath)) {
-        const imgBuffer = fs.readFileSync(refFilePath);
-        inputParts.push({
-          type: "image",
-          mime_type: "image/jpeg",
-          data: imgBuffer.toString("base64"),
-        });
+      // Anexa a imagem de referência real
+      for (const fname of refFilenames.slice(0, 2)) {
+        const refFilePath = path.join(process.cwd(), "public", "images", fname);
+        if (fs.existsSync(refFilePath)) {
+          const imgBuffer = fs.readFileSync(refFilePath);
+          inputParts.push({
+            type: "image",
+            mime_type: "image/jpeg",
+            data: imgBuffer.toString("base64"),
+          });
+        }
       }
 
       const imageInteraction = await ai.interactions.create({
@@ -108,7 +130,7 @@ Scene & Atmosphere: ${userScene}. Warm editorial lighting, ultra-sharp fabric te
         },
       });
 
-      let imageUrl = `/images/${refFilename}`;
+      let imageUrl = `/images/${primaryRefFilename}`;
       const generatedImage = imageInteraction.output_image;
       if (generatedImage && generatedImage.data) {
         const mime = generatedImage.mime_type || "image/jpeg";
@@ -126,7 +148,7 @@ Crie 3 opções de legendas em português do Brasil para Instagram/Facebook/What
 - Cor: ${color.name} (${color.profile})
 - Cenário da foto: ${userScene}
 - Foco da campanha: ${body.campaignFocus || "Venda direta com desconto no PIX e envio para todo o Brasil"}
-Destaque o tecido Tactel fresco (não esquenta nas costas), bolsinho lateral integrado e punhos brancos em corda 2,50mm com proteção UV.
+Destaque o tecido Tactel fresco (não esquenta nas costas), bolsinho lateral integrado e punhos brancos em corda trançada 2,50mm com proteção UV.
 Separe as 3 opções exatamente com o divisor "---OPCAO---".`,
         });
 
@@ -162,8 +184,8 @@ Separe as 3 opções exatamente com o divisor "---OPCAO---".`,
       });
     }
 
-    // Modo Demonstração Inteligente quando GEMINI_API_KEY ainda não foi configurada
-    const previewUrl = `/images/${refFilename}`;
+    // Modo Demonstração Inteligente quando a chave ainda não foi inserida
+    const previewUrl = `/images/${primaryRefFilename}`;
     const saved = await saveSocialPostRecord({
       prompt: userScene,
       caption: defaultCaptions[0],
@@ -175,13 +197,13 @@ Separe as 3 opções exatamente com o divisor "---OPCAO---".`,
 
     return NextResponse.json({
       mode: "demo_preview",
-      modelUsed: "gemini-nano-banana-2.1 (Modo Preview - Adicione GEMINI_API_KEY)",
+      modelUsed: "gemini-nano-banana-2.1 (Modo Demonstração)",
       imageUrl: previewUrl,
       captions: defaultCaptions,
       promptUsed: fullVisualPrompt,
       post: saved,
       notice:
-        "Preview gerado com a foto real de referência e 3 legendas prontas! Para gerar fotos inéditas ilimitadas com IA, adicione sua chave gratuita GEMINI_API_KEY do Google AI Studio.",
+        "Cole sua chave gratuita do Google AI Studio no campo acima para gerar fotos inéditas em alta resolução!",
     });
   } catch (error) {
     console.error("[Admin Social Studio Error]:", error);
