@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.inventory (
 CREATE INDEX IF NOT EXISTS idx_inventory_product_size_color
   ON public.inventory (product_id, size, color_id);
 
--- 2. TABELA DE CLIENTES & LEADS (CRM / MARKETING)
+-- 2. TABELA DE CLIENTES & CRM 360° (CUSTOMERS)
 CREATE TABLE IF NOT EXISTS public.customers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.customers (
   city TEXT,
   uf TEXT,
   cep TEXT,
+  address JSONB DEFAULT '{}'::jsonb,
+  notes TEXT DEFAULT '',
+  tags TEXT[] DEFAULT ARRAY[]::TEXT[],
   total_spent NUMERIC(10, 2) NOT NULL DEFAULT 0,
   orders_count INTEGER NOT NULL DEFAULT 0,
   accepts_marketing BOOLEAN NOT NULL DEFAULT TRUE,

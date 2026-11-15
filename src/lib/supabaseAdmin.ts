@@ -86,11 +86,18 @@ export interface CustomerRecord {
   city: string;
   uf: string;
   cep: string;
+  address: ShippingAddressRecord;
+  notes: string;
+  tags: string[];
   totalSpent: number;
   ordersCount: number;
+  totalUnitsBought: number;
   acceptsMarketing: boolean;
+  firstOrderDate: string;
   lastOrderDate: string;
   hasPendingPix: boolean;
+  preferredPaymentMethod: "pix" | "card";
+  purchaseHistory?: OrderRecord[];
 }
 
 export interface SocialPostRecord {
@@ -211,7 +218,7 @@ function createInitialDemoOrders(): {
       customerName: "Mariana Albuquerque",
       customerEmail: "mariana.albuquerque@email.com.br",
       customerPhone: "85999123456",
-      customerCpf: "04829183310",
+      customerCpf: "048.291.833-10",
       paymentMethod: "pix",
       paymentStatus: "approved",
       fulfillmentStatus: "separando",
@@ -271,7 +278,7 @@ function createInitialDemoOrders(): {
       customerName: "Carlos Eduardo Mendes",
       customerEmail: "carlos.mendes@gmail.com",
       customerPhone: "11988451290",
-      customerCpf: "31948271890",
+      customerCpf: "319.482.718-90",
       paymentMethod: "card",
       paymentStatus: "approved",
       fulfillmentStatus: "enviado",
@@ -317,7 +324,7 @@ function createInitialDemoOrders(): {
       customerName: "Fernanda Costa Lima",
       customerEmail: "fernanda.lima@hotmail.com",
       customerPhone: "81997214455",
-      customerCpf: "09418273451",
+      customerCpf: "094.182.734-51",
       paymentMethod: "pix",
       paymentStatus: "approved",
       fulfillmentStatus: "entregue",
@@ -377,7 +384,7 @@ function createInitialDemoOrders(): {
       customerName: "Roberto Nogueira",
       customerEmail: "roberto.nog@uol.com.br",
       customerPhone: "31991827364",
-      customerCpf: "61728394102",
+      customerCpf: "617.283.941-02",
       paymentMethod: "pix",
       paymentStatus: "pending",
       fulfillmentStatus: "aguardando_pagamento",
@@ -423,7 +430,7 @@ function createInitialDemoOrders(): {
       customerName: "Juliana Ribeiro",
       customerEmail: "juliana.ribeiro@gmail.com",
       customerPhone: "88996541230",
-      customerCpf: "48291038472",
+      customerCpf: "482.910.384-72",
       paymentMethod: "pix",
       paymentStatus: "approved",
       fulfillmentStatus: "entregue",
@@ -476,25 +483,115 @@ function createInitialDemoOrders(): {
         },
       ],
     },
+    // Segunda compra histórica da Mariana Albuquerque para demonstrar histórico multi-compra!
+    {
+      id: "ord-1000",
+      orderReference: "ADA-810294",
+      customerId: "cust-1",
+      customerName: "Mariana Albuquerque",
+      customerEmail: "mariana.albuquerque@email.com.br",
+      customerPhone: "85999123456",
+      customerCpf: "048.291.833-10",
+      paymentMethod: "card",
+      paymentStatus: "approved",
+      fulfillmentStatus: "entregue",
+      trackingCode: "AA441122339BR",
+      subtotal: 144.9,
+      shippingCost: 19.9,
+      totalAmount: 164.8,
+      shippingAddress: {
+        cep: "60165-121",
+        street: "Av. Beira Mar",
+        number: "1840",
+        complement: "Apto 902",
+        neighborhood: "Meireles",
+        city: "Fortaleza",
+        uf: "CE",
+      },
+      city: "Fortaleza",
+      uf: "CE",
+      stockDeducted: true,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 240).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 190).toISOString(),
+      items: [
+        {
+          id: "item-100",
+          orderId: "ord-1000",
+          orderReference: "ADA-810294",
+          sku: "rede-tradicional-GG-laranja-tropical",
+          productId: "rede-tradicional",
+          productName: "Rede Tradicional",
+          size: "GG",
+          colorId: "laranja-tropical",
+          colorName: "Laranja Tropical",
+          quantity: 1,
+          unitPrice: 144.9,
+          totalPrice: 144.9,
+        },
+      ],
+    },
   ];
 
-  const demoCustomers: CustomerRecord[] = demoOrders.map((ord) => ({
-    id: ord.customerId,
-    name: ord.customerName,
-    email: ord.customerEmail,
-    phone: ord.customerPhone,
-    cpf: ord.customerCpf,
-    city: ord.city,
-    uf: ord.uf,
-    cep: ord.shippingAddress.cep,
-    totalSpent: ord.paymentStatus === "approved" ? ord.totalAmount : 0,
-    ordersCount: 1,
-    acceptsMarketing: true,
-    lastOrderDate: ord.createdAt,
-    hasPendingPix: ord.paymentStatus === "pending",
-  }));
+  const customersMap = new Map<string, CustomerRecord>();
 
-  return { orders: demoOrders, customers: demoCustomers };
+  for (const ord of demoOrders) {
+    const existing = customersMap.get(ord.customerId);
+    const ordUnits = ord.items.reduce((acc, i) => acc + i.quantity, 0);
+
+    if (existing) {
+      existing.ordersCount += 1;
+      existing.totalUnitsBought += ordUnits;
+      if (ord.paymentStatus === "approved") {
+        existing.totalSpent = Number(
+          (existing.totalSpent + ord.totalAmount).toFixed(2)
+        );
+      }
+      if (ord.createdAt < existing.firstOrderDate) {
+        existing.firstOrderDate = ord.createdAt;
+      }
+      if (ord.createdAt > existing.lastOrderDate) {
+        existing.lastOrderDate = ord.createdAt;
+      }
+      if (existing.ordersCount >= 2 && !existing.tags.includes("Cliente VIP")) {
+        existing.tags.push("Cliente VIP", "Recorrente");
+      }
+    } else {
+      customersMap.set(ord.customerId, {
+        id: ord.customerId,
+        name: ord.customerName,
+        email: ord.customerEmail,
+        phone: ord.customerPhone,
+        cpf: ord.customerCpf,
+        city: ord.city,
+        uf: ord.uf,
+        cep: ord.shippingAddress.cep,
+        address: { ...ord.shippingAddress },
+        notes:
+          ord.customerId === "cust-1"
+            ? "Cliente fiel de Fortaleza/CE. Comprou para casa de praia e voltou para comprar mais duas redes GG."
+            : ord.paymentStatus === "pending"
+              ? "Aguardando confirmação do PIX. Entrar em contato pelo WhatsApp."
+              : "Cliente cadastrado automaticamente via compra na loja online.",
+        tags:
+          ord.paymentStatus === "pending"
+            ? ["Aguardando PIX"]
+            : ["Compra Online"],
+        totalSpent: ord.paymentStatus === "approved" ? ord.totalAmount : 0,
+        ordersCount: 1,
+        totalUnitsBought: ordUnits,
+        acceptsMarketing: true,
+        firstOrderDate: ord.createdAt,
+        lastOrderDate: ord.createdAt,
+        hasPendingPix: ord.paymentStatus === "pending",
+        preferredPaymentMethod: ord.paymentMethod,
+      });
+    }
+  }
+
+  return {
+    orders: demoOrders,
+    customers: Array.from(customersMap.values()),
+  };
 }
 
 function getLocalStore(): LocalStoreState {
@@ -521,6 +618,88 @@ function getLocalStore(): LocalStoreState {
     };
   }
   return globalForAdmin.__adamariLocalStore;
+}
+
+/**
+ * Sincroniza e enriquece cada cliente com o histórico completo de pedidos dele
+ */
+function buildEnrichedCustomers(
+  customers: CustomerRecord[],
+  orders: OrderRecord[]
+): CustomerRecord[] {
+  return customers.map((cust) => {
+    const cleanPhone = cust.phone.replace(/\D/g, "");
+    const cleanCpf = (cust.cpf || "").replace(/\D/g, "");
+    const cleanEmail = (cust.email || "").trim().toLowerCase();
+
+    const customerOrders = orders
+      .filter((o) => {
+        if (o.customerId === cust.id) return true;
+        if (cleanPhone && o.customerPhone.replace(/\D/g, "") === cleanPhone)
+          return true;
+        if (
+          cleanCpf &&
+          cleanCpf.length >= 11 &&
+          (o.customerCpf || "").replace(/\D/g, "") === cleanCpf
+        )
+          return true;
+        if (
+          cleanEmail &&
+          (o.customerEmail || "").trim().toLowerCase() === cleanEmail
+        )
+          return true;
+        return false;
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+    if (customerOrders.length === 0) {
+      return {
+        ...cust,
+        purchaseHistory: [],
+      };
+    }
+
+    const approvedOrders = customerOrders.filter(
+      (o) => o.paymentStatus === "approved"
+    );
+    const totalSpent = Number(
+      approvedOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)
+    );
+    const totalUnitsBought = customerOrders
+      .filter((o) => o.paymentStatus !== "cancelled")
+      .reduce(
+        (acc, o) => acc + o.items.reduce((sum, i) => sum + i.quantity, 0),
+        0
+      );
+
+    const hasPendingPix = customerOrders.some(
+      (o) => o.paymentStatus === "pending"
+    );
+    const pixCount = customerOrders.filter(
+      (o) => o.paymentMethod === "pix"
+    ).length;
+    const cardCount = customerOrders.filter(
+      (o) => o.paymentMethod === "card"
+    ).length;
+
+    const latestOrder = customerOrders[0];
+    const oldestOrder = customerOrders[customerOrders.length - 1];
+
+    return {
+      ...cust,
+      totalSpent,
+      ordersCount: customerOrders.length,
+      totalUnitsBought,
+      hasPendingPix,
+      firstOrderDate: oldestOrder.createdAt,
+      lastOrderDate: latestOrder.createdAt,
+      preferredPaymentMethod: pixCount >= cardCount ? "pix" : "card",
+      purchaseHistory: customerOrders,
+    };
+  });
 }
 
 // ============================================================================
@@ -646,7 +825,6 @@ export async function validateAndDeductStock(
 }> {
   const { stockMap } = await getAllInventory();
 
-  // Agrupa quantidades caso o mesmo SKU apareça mais de uma vez
   const neededBySku: Record<
     string,
     {
@@ -665,7 +843,6 @@ export async function validateAndDeductStock(
     neededBySku[sku].quantity += item.quantity;
   }
 
-  // 1. Verifica se todos têm estoque suficiente
   for (const [sku, req] of Object.entries(neededBySku)) {
     const available = stockMap[sku] ?? 0;
     if (available < req.quantity) {
@@ -687,7 +864,6 @@ export async function validateAndDeductStock(
     }
   }
 
-  // 2. Abate do estoque
   const updates = Object.entries(neededBySku).map(([sku, req]) => ({
     sku,
     stockQuantity: Math.max(0, (stockMap[sku] ?? 0) - req.quantity),
@@ -709,7 +885,7 @@ export async function restoreOrderStock(
 }
 
 // ============================================================================
-// FUNÇÕES DE PEDIDOS, CLIENTES E DASHBOARD
+// FUNÇÕES DE PEDIDOS, CLIENTES (CRM 360°) E DASHBOARD
 // ============================================================================
 
 export async function recordNewOrder(params: {
@@ -740,7 +916,20 @@ export async function recordNewOrder(params: {
   const supabase = getSupabaseServerClient();
   const now = new Date().toISOString();
   const orderId = `ord-${Date.now()}`;
-  const customerId = `cust-${Date.now()}`;
+
+  const cleanPhone = params.customer.phone.replace(/\D/g, "");
+  const cleanCpf = (params.customer.cpf || "").replace(/\D/g, "");
+  const existingCustomer = localStore.customers.find(
+    (c) =>
+      c.phone.replace(/\D/g, "") === cleanPhone ||
+      (cleanCpf.length === 11 && c.cpf.replace(/\D/g, "") === cleanCpf) ||
+      (params.customer.email &&
+        c.email.toLowerCase() === params.customer.email.toLowerCase())
+  );
+
+  const customerId = existingCustomer
+    ? existingCustomer.id
+    : `cust-${Date.now()}`;
 
   const orderItems: OrderItemRecord[] = params.items.map((it, idx) => ({
     id: `item-${Date.now()}-${idx}`,
@@ -781,23 +970,27 @@ export async function recordNewOrder(params: {
     items: orderItems,
   };
 
-  // Salva na memória local
   localStore.orders.unshift(newOrder);
-
-  const cleanPhone = params.customer.phone.replace(/\D/g, "");
-  const existingCustomer = localStore.customers.find(
-    (c) =>
-      c.phone.replace(/\D/g, "") === cleanPhone ||
-      (params.customer.email &&
-        c.email.toLowerCase() === params.customer.email.toLowerCase())
-  );
+  const unitsBoughtNow = orderItems.reduce((acc, i) => acc + i.quantity, 0);
 
   if (existingCustomer) {
-    existingCustomer.ordersCount += 1;
-    existingCustomer.lastOrderDate = now;
-    existingCustomer.hasPendingPix = params.paymentMethod === "pix";
+    existingCustomer.name = params.customer.name || existingCustomer.name;
+    existingCustomer.email = params.customer.email || existingCustomer.email;
+    existingCustomer.cpf = params.customer.cpf || existingCustomer.cpf;
+    existingCustomer.address = { ...params.address };
     existingCustomer.city = params.address.city;
     existingCustomer.uf = params.address.uf.toUpperCase();
+    existingCustomer.cep = params.address.cep;
+    existingCustomer.ordersCount += 1;
+    existingCustomer.totalUnitsBought += unitsBoughtNow;
+    existingCustomer.lastOrderDate = now;
+    existingCustomer.hasPendingPix = params.paymentMethod === "pix";
+    if (
+      existingCustomer.ordersCount >= 2 &&
+      !existingCustomer.tags.includes("Cliente VIP")
+    ) {
+      existingCustomer.tags.push("Cliente VIP");
+    }
   } else {
     localStore.customers.unshift({
       id: customerId,
@@ -808,15 +1001,20 @@ export async function recordNewOrder(params: {
       city: params.address.city,
       uf: params.address.uf.toUpperCase(),
       cep: params.address.cep,
+      address: { ...params.address },
+      notes: "Cadastrado automaticamente na finalização da compra.",
+      tags: ["Compra Online"],
       totalSpent: 0,
       ordersCount: 1,
+      totalUnitsBought: unitsBoughtNow,
       acceptsMarketing: true,
+      firstOrderDate: now,
       lastOrderDate: now,
       hasPendingPix: params.paymentMethod === "pix",
+      preferredPaymentMethod: params.paymentMethod,
     });
   }
 
-  // Persiste no Supabase quando configurado
   if (supabase) {
     try {
       const { data: custRow } = await supabase
@@ -829,6 +1027,7 @@ export async function recordNewOrder(params: {
           city: params.address.city,
           uf: params.address.uf.toUpperCase(),
           cep: params.address.cep,
+          address: params.address,
           orders_count: 1,
         })
         .select("id")
@@ -883,6 +1082,156 @@ export async function recordNewOrder(params: {
   return newOrder;
 }
 
+export async function updateCustomerRecord(
+  customerId: string,
+  updates: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    cpf?: string;
+    address?: ShippingAddressRecord;
+    notes?: string;
+    tags?: string[];
+    acceptsMarketing?: boolean;
+  }
+): Promise<CustomerRecord | null> {
+  const localStore = getLocalStore();
+  const supabase = getSupabaseServerClient();
+
+  const cust = localStore.customers.find((c) => c.id === customerId);
+  if (!cust) return null;
+
+  if (typeof updates.name === "string" && updates.name.trim()) {
+    cust.name = updates.name.trim();
+  }
+  if (typeof updates.email === "string") {
+    cust.email = updates.email.trim();
+  }
+  if (typeof updates.phone === "string" && updates.phone.trim()) {
+    cust.phone = updates.phone.trim();
+  }
+  if (typeof updates.cpf === "string") {
+    cust.cpf = updates.cpf.trim();
+  }
+  if (updates.address) {
+    cust.address = { ...cust.address, ...updates.address };
+    cust.city = cust.address.city || cust.city;
+    cust.uf = (cust.address.uf || cust.uf).toUpperCase();
+    cust.cep = cust.address.cep || cust.cep;
+  }
+  if (typeof updates.notes === "string") {
+    cust.notes = updates.notes;
+  }
+  if (Array.isArray(updates.tags)) {
+    cust.tags = updates.tags;
+  }
+  if (typeof updates.acceptsMarketing === "boolean") {
+    cust.acceptsMarketing = updates.acceptsMarketing;
+  }
+
+  // Sincroniza também os dados cadastrais nos pedidos vinculados a esse cliente
+  for (const ord of localStore.orders) {
+    if (ord.customerId === cust.id) {
+      ord.customerName = cust.name;
+      ord.customerEmail = cust.email;
+      ord.customerPhone = cust.phone;
+      ord.customerCpf = cust.cpf;
+      if (updates.address) {
+        ord.shippingAddress = { ...cust.address };
+        ord.city = cust.city;
+        ord.uf = cust.uf;
+      }
+    }
+  }
+
+  if (supabase) {
+    try {
+      await supabase
+        .from("customers")
+        .update({
+          name: cust.name,
+          email: cust.email || null,
+          phone: cust.phone,
+          cpf: cust.cpf || null,
+          city: cust.city,
+          uf: cust.uf,
+          cep: cust.cep,
+          address: cust.address,
+          notes: cust.notes,
+          tags: cust.tags,
+          accepts_marketing: cust.acceptsMarketing,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customerId);
+    } catch (err) {
+      console.error("[Supabase Update Customer Error]:", err);
+    }
+  }
+
+  return cust;
+}
+
+export async function createManualCustomer(input: {
+  name: string;
+  email?: string;
+  phone: string;
+  cpf?: string;
+  address: ShippingAddressRecord;
+  notes?: string;
+  tags?: string[];
+}): Promise<CustomerRecord> {
+  const localStore = getLocalStore();
+  const supabase = getSupabaseServerClient();
+  const now = new Date().toISOString();
+
+  const newCustomer: CustomerRecord = {
+    id: `cust-${Date.now()}`,
+    name: input.name.trim(),
+    email: (input.email || "").trim(),
+    phone: input.phone.trim(),
+    cpf: (input.cpf || "").trim(),
+    city: input.address.city || "Tabuleiro do Norte",
+    uf: (input.address.uf || "CE").toUpperCase(),
+    cep: input.address.cep || "",
+    address: input.address,
+    notes: input.notes || "Cliente cadastrado manualmente pelo Painel Admin.",
+    tags:
+      input.tags && input.tags.length > 0 ? input.tags : ["Cadastro Manual"],
+    totalSpent: 0,
+    ordersCount: 0,
+    totalUnitsBought: 0,
+    acceptsMarketing: true,
+    firstOrderDate: now,
+    lastOrderDate: now,
+    hasPendingPix: false,
+    preferredPaymentMethod: "pix",
+    purchaseHistory: [],
+  };
+
+  localStore.customers.unshift(newCustomer);
+
+  if (supabase) {
+    try {
+      await supabase.from("customers").insert({
+        name: newCustomer.name,
+        email: newCustomer.email || null,
+        phone: newCustomer.phone,
+        cpf: newCustomer.cpf || null,
+        city: newCustomer.city,
+        uf: newCustomer.uf,
+        cep: newCustomer.cep,
+        address: newCustomer.address,
+        notes: newCustomer.notes,
+        tags: newCustomer.tags,
+      });
+    } catch (err) {
+      console.error("[Supabase Create Customer Error]:", err);
+    }
+  }
+
+  return newCustomer;
+}
+
 export async function updateOrderByRefOrId(
   orderIdentifier: string,
   changes: {
@@ -928,7 +1277,6 @@ export async function updateOrderByRefOrId(
       }
     }
 
-    // Se pedido foi cancelado e o estoque havia sido abatido, estorna as unidades para o estoque!
     if (
       (order.paymentStatus === "cancelled" ||
         order.fulfillmentStatus === "cancelado") &&
@@ -940,7 +1288,6 @@ export async function updateOrderByRefOrId(
       );
     }
 
-    // Atualiza total gasto do cliente se virou approved
     if (!wasApprovedBefore && order.paymentStatus === "approved") {
       const cust = localStore.customers.find(
         (c) =>
@@ -1122,7 +1469,6 @@ export async function getAdminDashboardAnalytics() {
     }
   > = {};
 
-  // Contabiliza a partir dos pedidos aprovados (ou todos não cancelados para visão comercial)
   const validOrders = orders.filter((o) => o.paymentStatus !== "cancelled");
 
   for (const ord of validOrders) {
@@ -1162,7 +1508,6 @@ export async function getAdminDashboardAnalytics() {
     }
   }
 
-  // Resumo de Estoque
   const totalStockUnits = inventoryItems.reduce(
     (acc, i) => acc + i.stockQuantity,
     0
@@ -1173,6 +1518,11 @@ export async function getAdminDashboardAnalytics() {
   const lowStockCount = inventoryItems.filter(
     (i) => i.stockQuantity > 0 && i.stockQuantity <= i.lowStockThreshold
   ).length;
+
+  const enrichedCustomers = buildEnrichedCustomers(
+    localStore.customers,
+    orders
+  );
 
   return {
     supabaseConnected: isSupabaseConfigured(),
@@ -1215,7 +1565,7 @@ export async function getAdminDashboardAnalytics() {
         .sort((a, b) => b.revenue - a.revenue),
     },
     orders,
-    customers: localStore.customers,
+    customers: enrichedCustomers,
     inventory: inventoryItems,
     socialPosts: localStore.socialPosts,
   };

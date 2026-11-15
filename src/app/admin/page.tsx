@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Lock,
   CheckCircle2,
-  AlertTriangle,
   Search,
   ExternalLink,
   Copy,
@@ -32,6 +31,15 @@ import {
   ArrowLeft,
   ShieldCheck,
   X,
+  UserCheck,
+  Phone,
+  Edit3,
+  ShoppingBag,
+  Calendar,
+  CreditCard,
+  QrCode,
+  FileText,
+  UserPlus,
 } from "lucide-react";
 import {
   PRODUCTS,
@@ -49,6 +57,7 @@ import type {
   PaymentStatus,
   CustomerRecord,
   SocialPostRecord,
+  ShippingAddressRecord,
 } from "@/lib/supabaseAdmin";
 
 interface DashboardResponse {
@@ -107,8 +116,11 @@ type AdminTab =
   | "overview"
   | "orders"
   | "inventory"
+  | "customers"
   | "marketing"
   | "social_studio";
+
+type CustomerSubTab = "history" | "edit" | "contact";
 
 export default function AdminDashboardPage() {
   const [adminKey, setAdminKey] = useState<string>("adamari2026");
@@ -135,7 +147,63 @@ export default function AdminDashboardPage() {
   const [savingStock, setSavingStock] = useState<boolean>(false);
   const [stockSavedFeedback, setStockSavedFeedback] = useState<string>("");
 
-  // Estado da Aba de Marketing (E-mail & WhatsApp)
+  // Estado da Aba 4: Gerenciamento de Clientes (CRM 360°)
+  const [customerSearch, setCustomerSearch] = useState<string>("");
+  const [customerFilter, setCustomerFilter] = useState<
+    "all" | "vip" | "pending_pix" | "approved"
+  >("all");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customerSubTab, setCustomerSubTab] =
+    useState<CustomerSubTab>("history");
+  const [editCustName, setEditCustName] = useState<string>("");
+  const [editCustEmail, setEditCustEmail] = useState<string>("");
+  const [editCustPhone, setEditCustPhone] = useState<string>("");
+  const [editCustCpf, setEditCustCpf] = useState<string>("");
+  const [editCustAddress, setEditCustAddress] = useState<ShippingAddressRecord>(
+    {
+      cep: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      uf: "",
+    }
+  );
+  const [editCustNotes, setEditCustNotes] = useState<string>("");
+  const [editCustTags, setEditCustTags] = useState<string[]>([]);
+  const [savingCustomer, setSavingCustomer] = useState<boolean>(false);
+  const [customerSavedNotice, setCustomerSavedNotice] = useState<string>("");
+  const [copiedCustAddress, setCopiedCustAddress] = useState<boolean>(false);
+
+  //Contato Individual do Cliente (Dentro da Ficha CRM)
+  const [directWhatsMsg, setDirectWhatsMsg] = useState<string>("");
+  const [directEmailSubject, setDirectEmailSubject] = useState<string>("");
+  const [directEmailHeadline, setDirectEmailHeadline] = useState<string>("");
+  const [directEmailBody, setDirectEmailBody] = useState<string>("");
+  const [directEmailCoupon, setDirectEmailCoupon] = useState<string>("");
+  const [sendingDirectEmail, setSendingDirectEmail] = useState<boolean>(false);
+  const [directEmailFeedback, setDirectEmailFeedback] = useState<string>("");
+
+  // Modal de Novo Cliente Manual
+  const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] =
+    useState<boolean>(false);
+  const [newCustForm, setNewCustForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    cpf: "",
+    cep: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    uf: "CE",
+    notes: "",
+  });
+
+  // Estado da Aba de Marketing em Massa (E-mail & WhatsApp)
   const [mktSegment, setMktSegment] = useState<
     "all" | "pending_pix" | "approved"
   >("all");
@@ -168,7 +236,7 @@ export default function AdminDashboardPage() {
   const [studioScene, setStudioScene] = useState<string>(
     "Varanda aconchegante de praia no Ceará com coqueiros ao fundo, mesa de madeira com água de coco e sol dourado da tarde"
   );
-  const [studioCampaignFocus, setStudioCampaignFocus] = useState<string>(
+  const [studioCampaignFocus] = useState<string>(
     "Destaque para o tecido Tactel fresco que não esquenta nas costas, bolsinho lateral e desconto no PIX"
   );
   const [studioLoading, setStudioLoading] = useState<boolean>(false);
@@ -181,6 +249,49 @@ export default function AdminDashboardPage() {
   const [copiedCaptionIdx, setCopiedCaptionIdx] = useState<number | null>(null);
 
   const setGlobalStockMap = useCartStore((s) => s.setStockMap);
+
+  const populateCustomerForm = useCallback((cust: CustomerRecord) => {
+    setEditCustName(cust.name || "");
+    setEditCustEmail(cust.email || "");
+    setEditCustPhone(cust.phone || "");
+    setEditCustCpf(cust.cpf || "");
+    setEditCustAddress({
+      cep: cust.address?.cep || cust.cep || "",
+      street: cust.address?.street || "",
+      number: cust.address?.number || "",
+      complement: cust.address?.complement || "",
+      neighborhood: cust.address?.neighborhood || "",
+      city: cust.address?.city || cust.city || "",
+      uf: cust.address?.uf || cust.uf || "CE",
+    });
+    setEditCustNotes(cust.notes || "");
+    setEditCustTags(cust.tags || []);
+
+    const firstName = cust.name.split(" ")[0] || "Cliente";
+    const lastOrder = cust.purchaseHistory?.[0];
+    const lastItemDesc = lastOrder?.items?.[0]
+      ? `${lastOrder.items[0].productName} (${lastOrder.items[0].colorName} • Tam. ${lastOrder.items[0].size})`
+      : "Rede Adamari em Tactel";
+
+    setDirectWhatsMsg(
+      cust.hasPendingPix
+        ? `Olá ${firstName}, tudo bem? Aqui é do Ateliê Redes Adamari! 🌞 Vi que você escolheu sua ${lastItemDesc} no site. Ela já está separada aqui para você! Ficou alguma dúvida para concluir o pagamento no PIX?`
+        : `Olá ${firstName}, tudo bem? Aqui é do Ateliê Redes Adamari! 🌞 Passando para agradecer pela compra da sua ${lastItemDesc} e saber como está sendo a experiência com ela! Qualquer dúvida estamos sempre à disposição.`
+    );
+
+    setDirectEmailSubject(
+      `${firstName}, temos um presente especial para sua próxima Rede Adamari! 🌞`
+    );
+    setDirectEmailHeadline(
+      `Obrigado por fazer parte da família Redes Adamari, ${firstName}!`
+    );
+    setDirectEmailBody(
+      `Olá ${firstName}, tudo bem?\n\nÉ uma alegria ter você como cliente do nosso ateliê em Tabuleiro do Norte - CE (vimos no seu histórico a escolha da ${lastItemDesc}).\n\nLiberamos um cupom exclusivo caso queira presentear alguém ou escolher uma nova cor de Tactel com desconto extra no PIX!`
+    );
+    setDirectEmailCoupon("CLIENTEVIP10");
+    setDirectEmailFeedback("");
+    setCustomerSavedNotice("");
+  }, []);
 
   const loadDashboard = useCallback(
     async (keyToUse: string) => {
@@ -200,7 +311,6 @@ export default function AdminDashboardPage() {
         setData(json);
         setIsAuthenticated(true);
 
-        // Preenche mapa de estoque editável e sincroniza com a loja
         const initialStock: Record<string, number> = {};
         for (const item of json.inventory || []) {
           initialStock[item.sku] = item.stockQuantity;
@@ -208,19 +318,28 @@ export default function AdminDashboardPage() {
         setEditedStock(initialStock);
         setGlobalStockMap(initialStock);
 
-        // Preenche códigos de rastreio existentes
         const trackMap: Record<string, string> = {};
         for (const ord of json.orders || []) {
           trackMap[ord.id] = ord.trackingCode || "";
         }
         setTrackingInputs(trackMap);
+
+        if (json.customers && json.customers.length > 0) {
+          setSelectedCustomerId((prev) => {
+            const target =
+              json.customers.find((c: CustomerRecord) => c.id === prev) ||
+              json.customers[0];
+            populateCustomerForm(target);
+            return target.id;
+          });
+        }
       } catch {
         setAuthError("Erro de conexão ao carregar o painel.");
       } finally {
         setLoading(false);
       }
     },
-    [setGlobalStockMap]
+    [setGlobalStockMap, populateCustomerForm]
   );
 
   useEffect(() => {
@@ -331,11 +450,251 @@ export default function AdminDashboardPage() {
   };
 
   // ==========================================================================
-  // AÇÕES DE MARKETING (E-MAIL & WHATSAPP)
+  // AÇÕES DE GERENCIAMENTO DE CLIENTES (CRM 360°)
+  // ==========================================================================
+  const selectedCustomer =
+    data?.customers.find((c) => c.id === selectedCustomerId) ||
+    data?.customers[0] ||
+    null;
+
+  const handleSelectCustomer = (cust: CustomerRecord) => {
+    setSelectedCustomerId(cust.id);
+    populateCustomerForm(cust);
+  };
+
+  const handleSaveCustomerEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+    setSavingCustomer(true);
+    setCustomerSavedNotice("");
+    try {
+      const res = await fetch("/api/admin/customers", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({
+          customerId: selectedCustomer.id,
+          name: editCustName,
+          email: editCustEmail,
+          phone: editCustPhone,
+          cpf: editCustCpf,
+          address: editCustAddress,
+          notes: editCustNotes,
+          tags: editCustTags,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.analytics) {
+        setData(json.analytics);
+        setCustomerSavedNotice(
+          "✓ Dados, endereço e observações do cliente atualizados com sucesso!"
+        );
+        setTimeout(() => setCustomerSavedNotice(""), 3500);
+      }
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
+
+  const handleToggleCustomerTag = (tag: string) => {
+    setEditCustTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleEditCepLookup = async (rawCep: string) => {
+    const digits = rawCep.replace(/\D/g, "").slice(0, 8);
+    const formatted =
+      digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    setEditCustAddress((prev) => ({ ...prev, cep: formatted }));
+
+    if (digits.length === 8) {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+        const info = await res.json();
+        if (!info.erro) {
+          setEditCustAddress((prev) => ({
+            ...prev,
+            cep: formatted,
+            street: info.logradouro || prev.street,
+            neighborhood: info.bairro || prev.neighborhood,
+            city: info.localidade || prev.city,
+            uf: info.uf || prev.uf,
+          }));
+        }
+      } catch {
+        // Ignora falha silenciosamente
+      }
+    }
+  };
+
+  const handleCreateManualCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingCustomer(true);
+    try {
+      const res = await fetch("/api/admin/customers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({
+          name: newCustForm.name,
+          phone: newCustForm.phone,
+          email: newCustForm.email,
+          cpf: newCustForm.cpf,
+          address: {
+            cep: newCustForm.cep,
+            street: newCustForm.street,
+            number: newCustForm.number,
+            complement: newCustForm.complement,
+            neighborhood: newCustForm.neighborhood,
+            city: newCustForm.city || "Tabuleiro do Norte",
+            uf: newCustForm.uf || "CE",
+          },
+          notes: newCustForm.notes,
+          tags: ["Cadastro Manual"],
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.analytics) {
+        setData(json.analytics);
+        if (json.customer) {
+          setSelectedCustomerId(json.customer.id);
+          populateCustomerForm(json.customer);
+        }
+        setIsNewCustomerModalOpen(false);
+        setNewCustForm({
+          name: "",
+          phone: "",
+          email: "",
+          cpf: "",
+          cep: "",
+          street: "",
+          number: "",
+          complement: "",
+          neighborhood: "",
+          city: "",
+          uf: "CE",
+          notes: "",
+        });
+      }
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
+
+  const handleSendDirectCustomerEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomer || !editCustEmail.includes("@")) {
+      setDirectEmailFeedback(
+        "Cadastre um e-mail válido na aba 'Editar Dados' antes de enviar."
+      );
+      return;
+    }
+    setSendingDirectEmail(true);
+    setDirectEmailFeedback("");
+    try {
+      const res = await fetch("/api/admin/marketing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({
+          subject: directEmailSubject,
+          headline: directEmailHeadline,
+          messageBody: directEmailBody,
+          couponCode: directEmailCoupon,
+          ctaText: "Acessar Loja Redes Adamari",
+          ctaUrl:
+            "https://redes-adamari.fredericomonteiromendesmaia.workers.dev/#configurador",
+          recipients: [{ name: editCustName, email: editCustEmail }],
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setDirectEmailFeedback(
+          json.notice ||
+            `✓ E-mail individual enviado com sucesso para ${editCustEmail}!`
+        );
+      } else {
+        setDirectEmailFeedback(json.error || "Falha ao enviar e-mail.");
+      }
+    } finally {
+      setSendingDirectEmail(false);
+    }
+  };
+
+  const handleExportCustomersCsv = () => {
+    const rows = [
+      [
+        "Nome",
+        "WhatsApp",
+        "Email",
+        "CPF",
+        "Cidade",
+        "UF",
+        "CEP",
+        "Pedidos",
+        "Redes Compradas",
+        "Total Gasto (BRL)",
+        "Tags",
+      ],
+      ...(data?.customers || []).map((c) => [
+        `"${c.name}"`,
+        `"${c.phone}"`,
+        `"${c.email}"`,
+        `"${c.cpf}"`,
+        `"${c.city}"`,
+        `"${c.uf}"`,
+        `"${c.cep}"`,
+        String(c.ordersCount),
+        String(c.totalUnitsBought),
+        String(c.totalSpent.toFixed(2)),
+        `"${(c.tags || []).join(", ")}"`,
+      ]),
+    ];
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      rows.map((e) => e.join(";")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "clientes-redes-adamari.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // ==========================================================================
+  // AÇÕES DE MARKETING EM MASSA (E-MAIL & WHATSAPP)
   // ==========================================================================
   const filteredCustomers = (data?.customers || []).filter((c) => {
     if (mktSegment === "pending_pix") return c.hasPendingPix;
     if (mktSegment === "approved") return !c.hasPendingPix && c.totalSpent > 0;
+    return true;
+  });
+
+  const crmFilteredCustomers = (data?.customers || []).filter((c) => {
+    if (customerFilter === "vip" && c.ordersCount < 2 && !c.tags.includes("Cliente VIP"))
+      return false;
+    if (customerFilter === "pending_pix" && !c.hasPendingPix) return false;
+    if (customerFilter === "approved" && c.totalSpent <= 0) return false;
+
+    if (customerSearch.trim()) {
+      const q = customerSearch.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        c.cpf.toLowerCase().includes(q) ||
+        c.city.toLowerCase().includes(q) ||
+        c.uf.toLowerCase().includes(q)
+      );
+    }
     return true;
   });
 
@@ -471,8 +830,8 @@ export default function AdminDashboardPage() {
               Painel Admin Adamari
             </h1>
             <p className="text-xs sm:text-sm text-[#5C4438] mt-1">
-              Controle de vendas, entregas, estoque de cores/tamanhos, marketing
-              e Estúdio Gemini Nano Banana.
+              Controle de vendas, entregas, estoque, clientes (CRM 360°),
+              marketing e Estúdio Gemini Nano Banana.
             </p>
           </div>
 
@@ -581,7 +940,7 @@ export default function AdminDashboardPage() {
               </div>
               <p className="text-xs text-[#C9B89A]">
                 Expedição Tabuleiro do Norte – CE • Gestão de Vendas, Estoque,
-                Marketing & IA
+                Clientes (CRM) & IA
               </p>
             </div>
           </div>
@@ -607,7 +966,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* BARRA DE NAVEGAÇÃO DAS 5 ABAS */}
+        {/* BARRA DE NAVEGAÇÃO DAS 6 ABAS */}
         <div className="max-w-7xl mx-auto mt-3 pt-2 border-t border-[#3D2B22] flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             {
@@ -618,13 +977,13 @@ export default function AdminDashboardPage() {
             },
             {
               id: "orders",
-              label: "2. Pedidos, Entregas & Etiquetas",
+              label: "2. Pedidos & Entregas",
               icon: Truck,
               badge: kpis?.toShipCount ? `${kpis.toShipCount} p/ enviar` : null,
             },
             {
               id: "inventory",
-              label: "3. Controle de Estoque (Cores × Tam.)",
+              label: "3. Controle de Estoque",
               icon: Boxes,
               badge:
                 kpis && kpis.outOfStockCount + kpis.lowStockCount > 0
@@ -632,16 +991,24 @@ export default function AdminDashboardPage() {
                   : null,
             },
             {
+              id: "customers",
+              label: "4. Clientes & Histórico (CRM)",
+              icon: Users,
+              badge: data?.customers.length
+                ? `${data.customers.length}`
+                : null,
+            },
+            {
               id: "marketing",
-              label: "4. E-mail & WhatsApp Marketing",
+              label: "5. Campanhas Marketing",
               icon: Mail,
               badge: null,
             },
             {
               id: "social_studio",
-              label: "5. Estúdio IA (Nano Banana)",
+              label: "6. Estúdio IA (Nano Banana)",
               icon: Sparkles,
-              badge: "Novo",
+              badge: "IA",
             },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -651,7 +1018,7 @@ export default function AdminDashboardPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as AdminTab)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
                   active
                     ? "bg-[#FAF6F0] text-[#2C1E18] shadow-sm"
                     : "text-[#C9B89A] hover:text-white hover:bg-[#3D2B22]"
@@ -687,7 +1054,6 @@ export default function AdminDashboardPage() {
            ==================================================================== */}
         {activeTab === "overview" && kpis && rankings && (
           <div className="space-y-8">
-            {/* CARDS DE KPIS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm">
                 <div className="flex items-center justify-between text-xs font-bold text-[#7A6252]">
@@ -751,9 +1117,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* LINHA 2: QUAL MODELO E QUAL TAMANHO VENDE MAIS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Qual Modelo Vende Mais */}
               <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -802,7 +1166,6 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Qual Tamanho Vende Mais (M, G, GG, XGG) */}
               <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div>
                   <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
@@ -842,9 +1205,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* LINHA 3: RANKING DAS 10 CORES CAMPEÃS + PARA ONDE ESTAMOS VENDENDO MAIS */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Ranking de Cores (7 colunas) */}
               <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -928,7 +1289,6 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Para Onde Estamos Vendendo Mais - Estados e Cidades (5 colunas) */}
               <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div>
                   <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
@@ -1022,7 +1382,6 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* LISTA DE PEDIDOS */}
             <div className="space-y-4">
               {filteredOrders.map((ord) => {
                 const cleanPhone = ord.customerPhone.replace(/\D/g, "");
@@ -1043,10 +1402,24 @@ export default function AdminDashboardPage() {
                           #{ord.orderReference}
                         </span>
                         <div>
-                          <h3 className="font-bold text-base text-[#2C1E18]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const found = data?.customers.find(
+                                (c) =>
+                                  c.id === ord.customerId ||
+                                  c.phone.replace(/\D/g, "") === cleanPhone
+                              );
+                              if (found) {
+                                handleSelectCustomer(found);
+                                setActiveTab("customers");
+                              }
+                            }}
+                            className="font-bold text-base text-[#2C1E18] hover:text-[#D95D39] underline-offset-2 hover:underline text-left cursor-pointer"
+                          >
                             {ord.customerName}
-                          </h3>
-                          <span className="text-xs text-[#7A6252]">
+                          </button>
+                          <span className="block text-xs text-[#7A6252]">
                             {new Date(ord.createdAt).toLocaleString("pt-BR")} •{" "}
                             {ord.city}/{ord.uf} • Pagamento:{" "}
                             <strong className="uppercase">
@@ -1079,7 +1452,6 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    {/* ITENS DO PEDIDO E ENDEREÇO */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                       <div className="lg:col-span-6 space-y-2">
                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221]">
@@ -1148,7 +1520,6 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    {/* CONTROLES DE LOGÍSTICA, RASTREIO E ETIQUETA */}
                     <div className="pt-3 border-t border-[#EFE8D8] flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <select
@@ -1277,7 +1648,6 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Seletor do Modelo */}
                   {(
                     [
                       "rede-tradicional",
@@ -1318,7 +1688,6 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* TABELA MATRIZ: 10 CORES NAS LINHAS x 4 TAMANHOS NAS COLUNAS */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -1477,20 +1846,936 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ====================================================================
-            ABA 4: CENTRAL DE E-MAIL MARKETING & WHATSAPP MARKETING
+            ABA 4: GERENCIAMENTO DE CLIENTES & HISTÓRICO DE COMPRAS 360° (CRM)
+           ==================================================================== */}
+        {activeTab === "customers" && (
+          <div className="space-y-6">
+            {/* CABEÇALHO DO CRM + BOTÕES DE AÇÃO */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E6DEC8] shadow-warm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#1E4620] bg-[#E9F3E8] px-3 py-1 rounded-full">
+                  <UserCheck className="w-3.5 h-3.5" /> Base de Clientes
+                  Alimentada Automaticamente pelas Vendas
+                </span>
+                <h2 className="font-serif-editorial text-2xl font-bold text-[#2C1E18] mt-1.5">
+                  Central de Clientes & Histórico de Compras (CRM 360°)
+                </h2>
+                <p className="text-xs sm:text-sm text-[#5C4438]">
+                  Consulte quantas redes cada cliente comprou, quais cores e
+                  tamanhos, datas, formas de pagamento, edite dados e entre em
+                  contato por WhatsApp, E-mail ou Telefone.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleExportCustomersCsv}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#FAF6F0] hover:bg-[#EFE8D8] border border-[#D4C5A9] text-xs font-extrabold text-[#2C1E18] cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-[#9C5221]" /> Exportar
+                  Planilha (CSV)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewCustomerModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-solar-gradient text-white text-xs font-extrabold shadow-sm cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" /> + Cadastrar Cliente Manual
+                </button>
+              </div>
+            </div>
+
+            {/* LAYOUT MASTER-DETAIL: LISTA À ESQUERDA (5 COL) + FICHA 360° À DIREITA (7 COL) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* COLUNA ESQUERDA: BUSCA, FILTROS E LISTA DE CLIENTES */}
+              <div className="lg:col-span-5 bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm space-y-4">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#7A6252] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Buscar nome, WhatsApp, CPF, e-mail ou cidade..."
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] text-xs font-bold text-[#2C1E18] focus:outline-none focus:border-[#D95D39]"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "all", label: "Todos" },
+                    { id: "vip", label: "⭐ VIP / Recorrentes" },
+                    { id: "approved", label: "✓ Pagos" },
+                    { id: "pending_pix", label: "⏳ PIX Pendente" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() =>
+                        setCustomerFilter(
+                          f.id as "all" | "vip" | "pending_pix" | "approved"
+                        )
+                      }
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer ${
+                        customerFilter === f.id
+                          ? "bg-[#2C1E18] text-white"
+                          : "bg-[#FAF6F0] text-[#5C4438] hover:bg-[#EFE8D8]"
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-2.5 max-h-[680px] overflow-y-auto pr-1">
+                  {crmFilteredCustomers.map((cust) => {
+                    const isSelected = selectedCustomer?.id === cust.id;
+                    return (
+                      <button
+                        key={cust.id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(cust)}
+                        className={`w-full text-left p-4 rounded-2xl border-2 transition cursor-pointer space-y-2 ${
+                          isSelected
+                            ? "border-[#D95D39] bg-[#FDF8F2] shadow-sm"
+                            : "border-[#E6DEC8] bg-[#FAF6F0] hover:border-[#C9B89A]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="font-bold text-sm text-[#2C1E18]">
+                              {cust.name}
+                            </h3>
+                            <span className="text-[11px] text-[#7A6252] block">
+                              📍 {cust.city}/{cust.uf} • 📱 {cust.phone}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-black text-[#1E4620] block">
+                              {formatBRL(cust.totalSpent)}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#5C4438]">
+                              {cust.ordersCount} compra(s) •{" "}
+                              {cust.totalUnitsBought} rede(s)
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-[#E6DEC8]">
+                          <div className="flex flex-wrap gap-1">
+                            {cust.ordersCount >= 2 && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-extrabold">
+                                ⭐ Cliente Recorrente
+                              </span>
+                            )}
+                            {cust.hasPendingPix && (
+                              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-extrabold">
+                                ⏳ PIX Pendente
+                              </span>
+                            )}
+                            {(cust.tags || []).slice(0, 2).map((t) => (
+                              <span
+                                key={t}
+                                className="px-2 py-0.5 rounded-full bg-white border border-[#D4C5A9] text-[#5C4438] text-[10px] font-bold"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-bold uppercase text-[#7A6252]">
+                            Prefere {cust.preferredPaymentMethod}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* COLUNA DIREITA: PRONTUÁRIO / FICHA 360° DO CLIENTE SELECIONADO */}
+              <div className="lg:col-span-7 space-y-6">
+                {selectedCustomer ? (
+                  <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-6">
+                    {/* TOPO DA FICHA DO CLIENTE */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#EFE8D8]">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-14 h-14 rounded-2xl bg-[#2C1E18] text-amber-300 font-serif-editorial font-bold text-xl flex items-center justify-center shrink-0">
+                          {selectedCustomer.name
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-serif-editorial text-xl sm:text-2xl font-bold text-[#2C1E18]">
+                              {selectedCustomer.name}
+                            </h3>
+                            {selectedCustomer.ordersCount >= 2 && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-extrabold">
+                                ⭐ Cliente VIP ({selectedCustomer.ordersCount}{" "}
+                                compras)
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#5C4438] mt-0.5">
+                            CPF: <strong>{selectedCustomer.cpf || "—"}</strong>{" "}
+                            • Cliente desde{" "}
+                            {new Date(
+                              selectedCustomer.firstOrderDate
+                            ).toLocaleDateString("pt-BR")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Botões de Contato Imediato em 1 Clique */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={`https://wa.me/55${selectedCustomer.phone.replace(
+                            /\D/g,
+                            ""
+                          )}?text=${encodeURIComponent(directWhatsMsg)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E4620] hover:bg-[#163617] text-white text-xs font-extrabold transition"
+                        >
+                          <MessageCircle className="w-4 h-4" /> WhatsApp
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => setCustomerSubTab("contact")}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-solar-gradient text-white text-xs font-extrabold cursor-pointer"
+                        >
+                          <Mail className="w-4 h-4" /> Enviar E-mail
+                        </button>
+
+                        <a
+                          href={`tel:+55${selectedCustomer.phone.replace(
+                            /\D/g,
+                            ""
+                          )}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#FAF6F0] border border-[#D4C5A9] text-[#2C1E18] text-xs font-bold"
+                          title="Ligar por telefone"
+                        >
+                          <Phone className="w-3.5 h-3.5" /> Ligar
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* RESUMO DE MÉTRICAS DO CLIENTE */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8]">
+                        <span className="text-[10px] font-extrabold uppercase text-[#7A6252] block">
+                          Total Gasto (Aprovado)
+                        </span>
+                        <strong className="text-lg font-black text-[#1E4620]">
+                          {formatBRL(selectedCustomer.totalSpent)}
+                        </strong>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8]">
+                        <span className="text-[10px] font-extrabold uppercase text-[#7A6252] block">
+                          Pedidos Realizados
+                        </span>
+                        <strong className="text-lg font-black text-[#2C1E18]">
+                          {selectedCustomer.ordersCount} pedido(s)
+                        </strong>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8]">
+                        <span className="text-[10px] font-extrabold uppercase text-[#7A6252] block">
+                          Redes Compradas
+                        </span>
+                        <strong className="text-lg font-black text-[#D95D39]">
+                          {selectedCustomer.totalUnitsBought} unidade(s)
+                        </strong>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8]">
+                        <span className="text-[10px] font-extrabold uppercase text-[#7A6252] block">
+                          Pagamento Favorito
+                        </span>
+                        <strong className="text-sm font-black uppercase text-[#2C1E18] flex items-center gap-1 mt-1">
+                          {selectedCustomer.preferredPaymentMethod === "pix" ? (
+                            <>
+                              <QrCode className="w-4 h-4 text-[#1E4620]" /> PIX
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="w-4 h-4 text-[#9C5221]" />{" "}
+                              Cartão
+                            </>
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* NAVEGAÇÃO INTERNA DA FICHA DO CLIENTE */}
+                    <div className="flex flex-wrap items-center gap-2 border-b border-[#EFE8D8] pb-3">
+                      {[
+                        {
+                          id: "history",
+                          label: `🛍️ Histórico de Compras (${
+                            selectedCustomer.purchaseHistory?.length || 0
+                          })`,
+                          icon: ShoppingBag,
+                        },
+                        {
+                          id: "edit",
+                          label: "✏️ Editar Dados, Endereço & Notas",
+                          icon: Edit3,
+                        },
+                        {
+                          id: "contact",
+                          label: "💬 Central de Contato (WhatsApp & E-mail)",
+                          icon: MessageCircle,
+                        },
+                      ].map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() =>
+                            setCustomerSubTab(st.id as CustomerSubTab)
+                          }
+                          className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                            customerSubTab === st.id
+                              ? "bg-[#2C1E18] text-white"
+                              : "bg-[#FAF6F0] text-[#5C4438] hover:bg-[#EFE8D8]"
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* SUB-ABA 1: HISTÓRICO DETALHADO DE COMPRAS DO CLIENTE */}
+                    {customerSubTab === "history" && (
+                      <div className="space-y-4">
+                        {/* Card de Endereço Atual & Observação Rápida */}
+                        <div className="p-4 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#9C5221] block">
+                              Endereço de Entrega Cadastrado:
+                            </span>
+                            <p className="font-bold text-[#2C1E18]">
+                              {selectedCustomer.address?.street || "—"},{" "}
+                              {selectedCustomer.address?.number || "S/N"}{" "}
+                              {selectedCustomer.address?.complement
+                                ? `(${selectedCustomer.address.complement})`
+                                : ""}{" "}
+                              — Bairro{" "}
+                              {selectedCustomer.address?.neighborhood || "—"}
+                            </p>
+                            <p className="text-[#5C4438]">
+                              <strong>
+                                {selectedCustomer.city} / {selectedCustomer.uf}
+                              </strong>{" "}
+                              • CEP:{" "}
+                              <span className="font-mono font-bold">
+                                {selectedCustomer.cep}
+                              </span>{" "}
+                              • E-mail: {selectedCustomer.email || "—"}
+                            </p>
+                            {selectedCustomer.notes && (
+                              <p className="text-[#9C5221] bg-[#F5E6D3]/60 px-2.5 py-1 rounded-lg mt-1 font-medium">
+                                📝 <strong>Nota:</strong>{" "}
+                                {selectedCustomer.notes}
+                              </p>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fullAddr = `${selectedCustomer.name} | CPF: ${selectedCustomer.cpf} | Tel: ${selectedCustomer.phone} | Endereço: ${selectedCustomer.address?.street}, ${selectedCustomer.address?.number} ${selectedCustomer.address?.complement || ""} - ${selectedCustomer.address?.neighborhood}, ${selectedCustomer.city}/${selectedCustomer.uf} - CEP: ${selectedCustomer.cep}`;
+                              navigator.clipboard.writeText(fullAddr);
+                              setCopiedCustAddress(true);
+                              setTimeout(
+                                () => setCopiedCustAddress(false),
+                                2000
+                              );
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#D4C5A9] text-xs font-bold text-[#2C1E18] shrink-0 cursor-pointer"
+                          >
+                            {copiedCustAddress ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-[#1E4620]" />{" "}
+                                Copiado!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" /> Copiar Dados
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Linha do Tempo de Compras */}
+                        {selectedCustomer.purchaseHistory &&
+                        selectedCustomer.purchaseHistory.length > 0 ? (
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#7A6252]">
+                              Linha do Tempo de Pedidos deste Cliente:
+                            </h4>
+                            {selectedCustomer.purchaseHistory.map(
+                              (ord, idx) => (
+                                <div
+                                  key={ord.id}
+                                  className="p-4 rounded-2xl border border-[#E6DEC8] bg-white shadow-2xs space-y-3"
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#EFE8D8]">
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="font-mono font-black text-xs bg-[#2C1E18] text-amber-300 px-2.5 py-1 rounded-lg">
+                                        #{ord.orderReference}
+                                      </span>
+                                      <div>
+                                        <span className="text-xs font-bold text-[#2C1E18] flex items-center gap-1">
+                                          <Calendar className="w-3.5 h-3.5 text-[#D95D39]" />
+                                          {new Date(
+                                            ord.createdAt
+                                          ).toLocaleDateString("pt-BR", {
+                                            day: "2-digit",
+                                            month: "long",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </span>
+                                        <span className="text-[11px] text-[#7A6252]">
+                                          {idx === 0
+                                            ? "Compra mais recente"
+                                            : `Compra anterior #${
+                                                selectedCustomer.purchaseHistory!
+                                                  .length - idx
+                                              }`}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="px-2.5 py-0.5 rounded-full bg-[#FAF6F0] border border-[#D4C5A9] text-[11px] font-extrabold uppercase text-[#2C1E18]">
+                                        {ord.paymentMethod === "pix"
+                                          ? "💠 PIX à vista"
+                                          : "💳 Cartão de Crédito"}
+                                      </span>
+                                      <span
+                                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                                          ord.paymentStatus === "approved"
+                                            ? "bg-[#E9F3E8] text-[#1E4620]"
+                                            : ord.paymentStatus === "pending"
+                                              ? "bg-amber-100 text-amber-800"
+                                              : "bg-red-100 text-red-700"
+                                        }`}
+                                      >
+                                        {ord.paymentStatus === "approved"
+                                          ? "Pago"
+                                          : ord.paymentStatus === "pending"
+                                            ? "PIX Pendente"
+                                            : "Cancelado"}
+                                      </span>
+                                      <strong className="text-sm font-black text-[#1E4620]">
+                                        {formatBRL(ord.totalAmount)}
+                                      </strong>
+                                    </div>
+                                  </div>
+
+                                  {/* Quais Redes Comprou neste Pedido */}
+                                  <div className="space-y-1.5">
+                                    {ord.items.map((item) => {
+                                      const colorObj = TACTEL_COLORS.find(
+                                        (c) => c.id === item.colorId
+                                      );
+                                      return (
+                                        <div
+                                          key={item.id}
+                                          className="p-2.5 rounded-xl bg-[#FAF6F0] flex items-center justify-between text-xs"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className="w-4 h-4 rounded-full border border-black/20 shrink-0"
+                                              style={{
+                                                backgroundColor:
+                                                  colorObj?.hex || "#1E56A0",
+                                              }}
+                                            />
+                                            <span>
+                                              <strong>
+                                                {item.quantity}x{" "}
+                                                {item.productName}
+                                              </strong>{" "}
+                                              • Tamanho{" "}
+                                              <strong>{item.size}</strong> • Cor:{" "}
+                                              <strong>{item.colorName}</strong>
+                                            </span>
+                                          </div>
+                                          <span className="font-bold text-[#2C1E18]">
+                                            {formatBRL(item.totalPrice)}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[#5C4438]">
+                                    <span>
+                                      Status da Entrega:{" "}
+                                      <strong className="uppercase text-[#2C1E18]">
+                                        {ord.fulfillmentStatus.replace(
+                                          "_",
+                                          " "
+                                        )}
+                                      </strong>
+                                      {ord.trackingCode
+                                        ? ` • Rastreio: ${ord.trackingCode}`
+                                        : ""}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setLabelOrder(ord)}
+                                      className="inline-flex items-center gap-1 font-bold text-[#9C5221] hover:underline cursor-pointer"
+                                    >
+                                      <Printer className="w-3.5 h-3.5" />{" "}
+                                      Etiqueta de Envio
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-6 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] text-center text-xs text-[#5C4438]">
+                            Este cliente ainda não possui pedidos registrados.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SUB-ABA 2: EDITAR INFORMAÇÕES, ENDEREÇO E NOTAS DO CLIENTE */}
+                    {customerSubTab === "edit" && (
+                      <form
+                        onSubmit={handleSaveCustomerEdit}
+                        className="space-y-4"
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                              Nome Completo do Cliente *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={editCustName}
+                              onChange={(e) => setEditCustName(e.target.value)}
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                              WhatsApp / Telefone *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={editCustPhone}
+                              onChange={(e) => setEditCustPhone(e.target.value)}
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                              E-mail do Cliente
+                            </label>
+                            <input
+                              type="email"
+                              value={editCustEmail}
+                              onChange={(e) => setEditCustEmail(e.target.value)}
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                              CPF / CNPJ
+                            </label>
+                            <input
+                              type="text"
+                              value={editCustCpf}
+                              onChange={(e) => setEditCustCpf(e.target.value)}
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Endereço Completo com Autopreenchimento ViaCEP */}
+                        <div className="p-4 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-3">
+                          <span className="text-xs font-extrabold uppercase tracking-wider text-[#9C5221] block">
+                            Endereço de Entrega (Autopreenchimento por CEP):
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                                CEP
+                              </label>
+                              <input
+                                type="text"
+                                value={editCustAddress.cep}
+                                onChange={(e) =>
+                                  handleEditCepLookup(e.target.value)
+                                }
+                                className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                                Rua / Avenida
+                              </label>
+                              <input
+                                type="text"
+                                value={editCustAddress.street}
+                                onChange={(e) =>
+                                  setEditCustAddress((prev) => ({
+                                    ...prev,
+                                    street: e.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                                Número
+                              </label>
+                              <input
+                                type="text"
+                                value={editCustAddress.number}
+                                onChange={(e) =>
+                                  setEditCustAddress((prev) => ({
+                                    ...prev,
+                                    number: e.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                                Complemento
+                              </label>
+                              <input
+                                type="text"
+                                value={editCustAddress.complement || ""}
+                                onChange={(e) =>
+                                  setEditCustAddress((prev) => ({
+                                    ...prev,
+                                    complement: e.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                                Bairro
+                              </label>
+                              <input
+                                type="text"
+                                value={editCustAddress.neighborhood}
+                                onChange={(e) =>
+                                  setEditCustAddress((prev) => ({
+                                    ...prev,
+                                    neighborhood: e.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                                Cidade / UF
+                              </label>
+                              <div className="flex gap-1">
+                                <input
+                                  type="text"
+                                  value={editCustAddress.city}
+                                  onChange={(e) =>
+                                    setEditCustAddress((prev) => ({
+                                      ...prev,
+                                      city: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-[#D4C5A9] bg-white px-2.5 py-2 text-xs font-bold text-[#2C1E18]"
+                                />
+                                <input
+                                  type="text"
+                                  maxLength={2}
+                                  value={editCustAddress.uf}
+                                  onChange={(e) =>
+                                    setEditCustAddress((prev) => ({
+                                      ...prev,
+                                      uf: e.target.value.toUpperCase(),
+                                    }))
+                                  }
+                                  className="w-12 text-center rounded-xl border border-[#D4C5A9] bg-white py-2 text-xs font-black uppercase text-[#2C1E18]"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tags de Classificação do Cliente */}
+                        <div>
+                          <label className="block text-xs font-bold text-[#2C1E18] mb-1.5">
+                            Etiquetas / Perfil do Cliente (Clique para marcar):
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              "Cliente VIP",
+                              "Recorrente",
+                              "Pousada / Atacado",
+                              "Aguardando PIX",
+                              "Indicação",
+                              "Fã de Rede c/ Mosquiteiro",
+                            ].map((tag) => {
+                              const active = editCustTags.includes(tag);
+                              return (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => handleToggleCustomerTag(tag)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                                    active
+                                      ? "bg-[#2C1E18] text-amber-300 border-[#2C1E18]"
+                                      : "bg-[#FAF6F0] text-[#5C4438] border-[#D4C5A9]"
+                                  }`}
+                                >
+                                  {active ? `✓ ${tag}` : `+ ${tag}`}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Observações Internas do Vendedor */}
+                        <div>
+                          <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                            <FileText className="w-3.5 h-3.5 inline mr-1 text-[#D95D39]" />
+                            Observações Internas sobre o Cliente:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={editCustNotes}
+                            onChange={(e) => setEditCustNotes(e.target.value)}
+                            placeholder="Ex: Cliente prefere entrega pela manhã, gostou muito da cor Azul Royal..."
+                            className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] p-3 text-xs text-[#2C1E18]"
+                          />
+                        </div>
+
+                        {customerSavedNotice && (
+                          <div className="p-3 rounded-xl bg-[#E9F3E8] border border-[#C6E2C3] text-xs font-extrabold text-[#1E4620]">
+                            {customerSavedNotice}
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={savingCustomer}
+                          className="w-full py-3.5 rounded-2xl bg-solar-gradient text-white font-extrabold text-sm shadow-md cursor-pointer"
+                        >
+                          {savingCustomer
+                            ? "Salvando Alterações..."
+                            : "Salvar Alterações do Cliente"}
+                        </button>
+                      </form>
+                    )}
+
+                    {/* SUB-ABA 3: CENTRAL DE CONTATO INDIVIDUAL (WHATSAPP + E-MAIL DIRETO) */}
+                    {customerSubTab === "contact" && (
+                      <div className="space-y-6">
+                        {/* Bloco 1: WhatsApp Personalizado para este Cliente */}
+                        <div className="p-4 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-[#2C1E18] flex items-center gap-1.5">
+                              <MessageCircle className="w-4 h-4 text-[#1E4620]" />
+                              1. Mensagem Direta de WhatsApp para{" "}
+                              {selectedCustomer.name.split(" ")[0]}
+                            </h4>
+                            <span className="text-xs font-mono font-bold text-[#5C4438]">
+                              {selectedCustomer.phone}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              {
+                                label: "👋 Pós-Venda / Saber se gostou",
+                                text: `Olá ${
+                                  selectedCustomer.name.split(" ")[0]
+                                }, tudo bem? Aqui é do Ateliê Redes Adamari! 🌞 Passando para saber se você já recebeu e estreou sua rede e se gostou do conforto do tecido Tactel!`,
+                              },
+                              {
+                                label: "⏳ Lembrete de PIX Pendente",
+                                text: `Olá ${
+                                  selectedCustomer.name.split(" ")[0]
+                                }! Aqui é da Redes Adamari. Vimos que seu pedido ficou aguardando a confirmação do PIX. Sua rede continua reservada aqui em Tabuleiro do Norte/CE, posso te ajudar a concluir?`,
+                              },
+                              {
+                                label: "🎁 Oferta VIP Recompra (Desconto)",
+                                text: `Olá ${
+                                  selectedCustomer.name.split(" ")[0]
+                                }! Como você já é cliente especial da Redes Adamari, liberamos um desconto VIP caso queira escolher uma nova cor de Rede em Tactel para sua casa ou para presentear! 🌞`,
+                              },
+                            ].map((preset, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setDirectWhatsMsg(preset.text)}
+                                className="px-2.5 py-1 rounded-lg bg-white border border-[#D4C5A9] text-[11px] font-bold text-[#2C1E18] hover:border-[#1E4620] cursor-pointer"
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <textarea
+                            rows={3}
+                            value={directWhatsMsg}
+                            onChange={(e) => setDirectWhatsMsg(e.target.value)}
+                            className="w-full rounded-xl border border-[#D4C5A9] bg-white p-3 text-xs text-[#2C1E18]"
+                          />
+
+                          <a
+                            href={`https://wa.me/55${selectedCustomer.phone.replace(
+                              /\D/g,
+                              ""
+                            )}?text=${encodeURIComponent(directWhatsMsg)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-3 rounded-xl bg-[#1E4620] hover:bg-[#163617] text-white font-extrabold text-xs flex items-center justify-center gap-2"
+                          >
+                            <MessageCircle className="w-4 h-4" /> Abrir Conversa
+                            no WhatsApp de {selectedCustomer.name.split(" ")[0]}
+                          </a>
+                        </div>
+
+                        {/* Bloco 2: Enviar E-mail Individual para este Cliente */}
+                        <form
+                          onSubmit={handleSendDirectCustomerEmail}
+                          className="p-4 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-[#2C1E18] flex items-center gap-1.5">
+                              <Mail className="w-4 h-4 text-[#D95D39]" />
+                              2. Enviar E-mail Individual para{" "}
+                              {selectedCustomer.name.split(" ")[0]}
+                            </h4>
+                            <span className="text-xs font-bold text-[#5C4438]">
+                              Para: {editCustEmail || "Sem e-mail cadastrado"}
+                            </span>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                              Assunto do E-mail:
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={directEmailSubject}
+                              onChange={(e) =>
+                                setDirectEmailSubject(e.target.value)
+                              }
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                              Título Principal:
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={directEmailHeadline}
+                              onChange={(e) =>
+                                setDirectEmailHeadline(e.target.value)
+                              }
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                              Mensagem Personalizada:
+                            </label>
+                            <textarea
+                              rows={4}
+                              required
+                              value={directEmailBody}
+                              onChange={(e) =>
+                                setDirectEmailBody(e.target.value)
+                              }
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-white p-3 text-xs text-[#2C1E18]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#5C4438] mb-1">
+                              Cupom Exclusivo (Opcional):
+                            </label>
+                            <input
+                              type="text"
+                              value={directEmailCoupon}
+                              onChange={(e) =>
+                                setDirectEmailCoupon(e.target.value)
+                              }
+                              className="w-full rounded-xl border border-[#D4C5A9] bg-white px-3 py-2 text-xs font-bold uppercase text-[#D95D39]"
+                            />
+                          </div>
+
+                          {directEmailFeedback && (
+                            <div className="p-3 rounded-xl bg-[#E9F3E8] border border-[#C6E2C3] text-xs font-bold text-[#1E4620]">
+                              {directEmailFeedback}
+                            </div>
+                          )}
+
+                          <button
+                            type="submit"
+                            disabled={sendingDirectEmail}
+                            className="w-full py-3 rounded-xl bg-solar-gradient text-white font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Send className="w-4 h-4" />
+                            {sendingDirectEmail
+                              ? "Enviando E-mail..."
+                              : `Disparar E-mail Individual para ${
+                                  selectedCustomer.name.split(" ")[0]
+                                }`}
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================================
+            ABA 5: CENTRAL DE E-MAIL MARKETING & WHATSAPP MARKETING EM MASSA
            ==================================================================== */}
         {activeTab === "marketing" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Disparador de E-mail Marketing (7 colunas) */}
             <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
               <div className="flex items-center justify-between border-b border-[#EFE8D8] pb-4">
                 <div>
                   <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
                     <Mail className="w-5 h-5 text-[#D95D39]" />
-                    Disparador de E-mail Marketing (Resend)
+                    Disparador de E-mail Marketing em Massa (Resend)
                   </h2>
                   <p className="text-xs text-[#7A6252]">
-                    Envie campanhas com a identidade visual do Ateliê Adamari
+                    Envie campanhas promocionais com a identidade visual do
+                    Ateliê Adamari
                   </p>
                 </div>
                 <span className="text-xs font-extrabold bg-[#E9F3E8] text-[#1E4620] px-3 py-1 rounded-full">
@@ -1498,7 +2783,6 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
 
-              {/* Botões de Templates Prontos */}
               <div className="space-y-1.5">
                 <span className="text-xs font-bold text-[#5C4438]">
                   Carregar Modelo Pronto:
@@ -1638,12 +2922,11 @@ export default function AdminDashboardPage() {
               </form>
             </div>
 
-            {/* Central de WhatsApp Marketing (5 colunas) */}
             <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
               <div>
                 <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
                   <MessageCircle className="w-5 h-5 text-[#1E4620]" />
-                  Campanha Rápida de WhatsApp
+                  Lista de Disparo Rápido no WhatsApp
                 </h2>
                 <p className="text-xs text-[#7A6252]">
                   Envie mensagens personalizadas com 1 clique para cada cliente
@@ -1704,11 +2987,10 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ====================================================================
-            ABA 5: ESTÚDIO CRIATIVO DE REDES SOCIAIS COM GEMINI NANO BANANA
+            ABA 6: ESTÚDIO CRIATIVO DE REDES SOCIAIS COM GEMINI NANO BANANA
            ==================================================================== */}
         {activeTab === "social_studio" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Painel de Configuração do Post IA (5 colunas) */}
             <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
               <div>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221] bg-[#F5E6D3] px-3 py-1 rounded-full">
@@ -1843,7 +3125,6 @@ export default function AdminDashboardPage() {
               </form>
             </div>
 
-            {/* Resultado do Estúdio IA (7 colunas) */}
             <div className="lg:col-span-7 space-y-6">
               {studioResult ? (
                 <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
@@ -1940,6 +3221,165 @@ export default function AdminDashboardPage() {
       </main>
 
       {/* ======================================================================
+          MODAL DE CADASTRO MANUAL DE NOVO CLIENTE
+         ====================================================================== */}
+      {isNewCustomerModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#EFE8D8] pb-3">
+              <h3 className="font-serif-editorial text-xl font-bold text-[#2C1E18]">
+                Cadastrar Novo Cliente Manualmente
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewCustomerModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-[#FAF6F0] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateManualCustomer} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newCustForm.name}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({ ...p, name: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    WhatsApp c/ DDD *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="(88) 99999-9999"
+                    value={newCustForm.phone}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({ ...p, phone: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    value={newCustForm.email}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    CPF / CNPJ
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustForm.cpf}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({ ...p, cpf: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    CEP
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustForm.cep}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({ ...p, cep: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustForm.city}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({ ...p, city: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    UF
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={newCustForm.uf}
+                    onChange={(e) =>
+                      setNewCustForm((p) => ({
+                        ...p,
+                        uf: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                  Observações do Cliente
+                </label>
+                <textarea
+                  rows={2}
+                  value={newCustForm.notes}
+                  onChange={(e) =>
+                    setNewCustForm((p) => ({ ...p, notes: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] p-2.5 text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewCustomerModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#D4C5A9] text-xs font-bold text-[#5C4438] cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCustomer}
+                  className="px-5 py-2.5 rounded-xl bg-solar-gradient text-white text-xs font-extrabold cursor-pointer"
+                >
+                  {savingCustomer ? "Salvando..." : "Salvar Cliente"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================
           MODAL DE IMPRESSÃO DE ETIQUETA DE ENVIO (CORREIOS / TRANSPORTADORA)
          ====================================================================== */}
       {labelOrder && (
@@ -1958,7 +3398,6 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            {/* Área Formatada da Etiqueta */}
             <div className="border-2 border-black p-5 rounded-xl space-y-4 text-black bg-white">
               <div className="flex items-center justify-between border-b-2 border-black pb-3">
                 <div>
