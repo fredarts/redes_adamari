@@ -59,13 +59,13 @@ export function Navbar() {
             </div>
           </a>
 
-          {/* Links de Navegação (Desktop) */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-[#5C4438]">
+          {/* Links de Navegação (Desktop & Tablet) */}
+          <nav className="hidden md:flex items-center gap-3.5 lg:gap-6 text-xs lg:text-sm font-semibold text-[#5C4438]">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="hover:text-[#D95D39] transition-colors"
+                className="hover:text-[#D95D39] transition-colors whitespace-nowrap"
               >
                 {link.label}
               </a>

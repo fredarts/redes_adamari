@@ -210,8 +210,8 @@ export function CartDrawer() {
         onClick={closeDrawer}
       />
 
-      {/* Painel da Sacola com Estética Acolhedora Ateliê Adamari */}
-      <div className="relative z-10 w-full max-w-md bg-[#FAF6F0] h-full flex flex-col shadow-2xl border-l border-[#E6DEC8]">
+      {/* Painel da Sacola com Estética Acolhedora Ateliê Adamari (Adaptado p/ Celular e Tablet) */}
+      <div className="relative z-10 w-full max-w-md md:max-w-lg bg-[#FAF6F0] h-full flex flex-col shadow-2xl border-l border-[#E6DEC8]">
         {/* Header da Sacola em Tom Café / Madeira com a Logo Oficial */}
         <div className="px-5 py-4 border-b border-[#422F24] flex items-center justify-between bg-[#2C1E18] text-[#FAF6F0]">
           <div className="flex items-center gap-3">

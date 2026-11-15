@@ -184,9 +184,9 @@ export default function HomePage() {
           <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-amber-300/20 blur-3xl" />
           <div className="pointer-events-none absolute top-1/3 -right-24 w-96 h-96 rounded-full bg-orange-400/15 blur-3xl" />
 
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center relative z-10">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10 items-center relative z-10">
             {/* Coluna Esquerda: Mensagem Acolhedora e Humana */}
-            <div className="lg:col-span-6 space-y-5 text-center lg:text-left">
+            <div className="md:col-span-6 lg:col-span-6 space-y-5 text-center md:text-left">
               <div className="inline-flex items-center gap-2 rounded-full bg-[#E9F3E8] border border-[#C6E2C3] px-4 py-1.5 text-xs font-bold text-[#1E4620] shadow-2xs">
                 <Sun className="w-4 h-4 text-[#D95D39]" />
                 Direto de Tabuleiro do Norte – CE para sua casa
@@ -200,7 +200,7 @@ export default function HomePage() {
                 merece.
               </h1>
 
-              <p className="text-sm sm:text-lg text-[#5C4438] max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              <p className="text-sm sm:text-base lg:text-lg text-[#5C4438] max-w-xl mx-auto md:mx-0 leading-relaxed">
                 Nossas redes de dormir são confeccionadas em{" "}
                 <strong className="text-[#2C1E18]">
                   tecido Tactel macio e resistente
@@ -218,7 +218,7 @@ export default function HomePage() {
               </p>
 
               {/* Faixa das 10 Cores Vibrantes com brilho acetinado */}
-              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3">
                 <div className="flex items-center -space-x-1.5">
                   {TACTEL_COLORS.map((c) => (
                     <span
@@ -235,7 +235,7 @@ export default function HomePage() {
               </div>
 
               {/* Botões de Ação com Gradiente Pôr do Sol */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5">
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3.5">
                 <a
                   href="#configurador"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-solar-gradient text-white font-extrabold text-base shadow-lg shadow-[#D95D39]/30 transition"
@@ -253,7 +253,7 @@ export default function HomePage() {
             </div>
 
             {/* Coluna Direita: Mosaico de Fotografias Reais da Rede */}
-            <div className="lg:col-span-6 grid grid-cols-12 gap-3.5 sm:gap-4 items-center">
+            <div className="md:col-span-6 lg:col-span-6 grid grid-cols-12 gap-3.5 sm:gap-4 items-center">
               {/* Foto Principal Grande (Casal na Rede Rosa no Jardim) */}
               <div className="col-span-12 sm:col-span-7 relative rounded-[28px] overflow-hidden shadow-warm-lg border-4 border-white aspect-[4/3] sm:aspect-[4/5]">
                 <img
@@ -449,9 +449,9 @@ export default function HomePage() {
           className="scroll-mt-24 py-14 sm:py-18 px-4 sm:px-6 max-w-7xl mx-auto"
         >
           <div className="rounded-[32px] bg-gradient-to-br from-[#173819] via-[#1E4620] to-[#142E15] text-[#FAF6F0] p-6 sm:p-10 lg:p-12 shadow-warm-lg border border-emerald-900 overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-center">
               {/* Foto Macro do Punho e Casinhas */}
-              <div className="lg:col-span-5">
+              <div className="md:col-span-5">
                 <div className="rounded-[24px] overflow-hidden border-4 border-white/20 shadow-2xl aspect-square relative">
                   <img
                     src="/images/rede-amarela-detalhe-punho.jpg"
@@ -469,7 +469,7 @@ export default function HomePage() {
               </div>
 
               {/* Explicação Acolhedora e Ficha Técnica da Corda */}
-              <div className="lg:col-span-7 space-y-5">
+              <div className="md:col-span-7 space-y-5">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 text-amber-300 px-3.5 py-1 text-xs font-bold uppercase tracking-wider">
                   <Award className="w-4 h-4" /> Qualidade que Você Vê de Perto
                 </span>

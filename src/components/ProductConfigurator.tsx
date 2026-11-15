@@ -205,10 +205,10 @@ export function ProductConfigurator() {
         })}
       </div>
 
-      {/* GRID PRINCIPAL: GALERIA DE FOTOS REAIS + SELETOR DE COR E TAMANHO */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-        {/* Coluna Esquerda: Galeria de Fotos Reais (7 colunas) */}
-        <div className="lg:col-span-7 lg:sticky lg:top-26 space-y-4">
+      {/* GRID PRINCIPAL: GALERIA DE FOTOS REAIS + SELETOR DE COR E TAMANHO (Responsivo em Celular, Tablet e Desktop) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
+        {/* Coluna Esquerda: Galeria de Fotos Reais (6 colunas no Tablet, 7 no Desktop) */}
+        <div className="md:col-span-6 lg:col-span-7 md:sticky md:top-24 space-y-4">
           <HammockVisualizer
             product={product}
             selectedColor={selectedColor}
@@ -228,8 +228,8 @@ export function ProductConfigurator() {
           </div>
         </div>
 
-        {/* Coluna Direita: Painel de Escolha de Cor, Tamanho, Estoque e Compra (5 colunas) */}
-        <div className="lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-7 border border-[#E6DEC8] shadow-warm space-y-6">
+        {/* Coluna Direita: Painel de Escolha de Cor, Tamanho, Estoque e Compra (6 colunas no Tablet, 5 no Desktop) */}
+        <div className="md:col-span-6 lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-6 lg:p-7 border border-[#E6DEC8] shadow-warm space-y-6">
           {/* Título e Bloco de Preço */}
           <div className="border-b border-[#EFE8D8] pb-5">
             <div className="flex items-center justify-between gap-2 mb-1">

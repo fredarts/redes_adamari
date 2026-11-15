@@ -1152,7 +1152,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1240,8 +1240,8 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              <div className="md:col-span-6 lg:col-span-7 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
@@ -1324,7 +1324,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+              <div className="md:col-span-6 lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
                 <div>
                   <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-[#1E4620]" />
@@ -2028,7 +2028,7 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* COLUNA DIREITA: PRONTUÁRIO / FICHA 360° DO CLIENTE SELECIONADO */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className="md:col-span-6 lg:col-span-7 space-y-6">
                 {selectedCustomer ? (
                   <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-6">
                     {/* TOPO DA FICHA DO CLIENTE */}
@@ -3063,8 +3063,8 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+            <div className="md:col-span-6 lg:col-span-5 bg-white rounded-3xl p-5 sm:p-6 border border-[#E6DEC8] shadow-warm space-y-5">
               <div>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221] bg-[#F5E6D3] px-3 py-1 rounded-full">
                   <Sparkles className="w-3.5 h-3.5 text-[#D95D39]" /> Gemini
@@ -3205,7 +3205,7 @@ export default function AdminDashboardPage() {
               </form>
             </div>
 
-            <div className="lg:col-span-7 space-y-6">
+            <div className="md:col-span-6 lg:col-span-7 space-y-6">
               {studioResult ? (
                 <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
                   <div className="flex items-center justify-between">

@@ -64,3 +64,42 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ==========================================================================
+   CSS DEDICADO PARA TABLETS (641px - 1024px: iPad Mini, iPad Air, Galaxy Tab)
+   Orientação Retrato (Portrait: ~768px-834px) e Paisagem (Landscape: ~1024px)
+   ========================================================================== */
+@media screen and (min-width: 641px) and (max-width: 1024px) {
+  /* Otimização de resposta ao toque sem atraso de 300ms em telas touch */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  /* Tipografia editorial balanceada em títulos de tablet sem quebras órfãs */
+  .font-serif-editorial {
+    text-wrap: balance;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  /* Ajuste de sombras orgânicas em telas intermediárias */
+  .shadow-warm {
+    box-shadow: 0 10px 26px -8px rgba(44, 30, 24, 0.08),
+      0 3px 10px -2px rgba(44, 30, 24, 0.04);
+  }
+
+  .shadow-warm-lg {
+    box-shadow: 0 16px 38px -10px rgba(44, 30, 24, 0.13),
+      0 6px 16px -4px rgba(44, 30, 24, 0.06);
+  }
+
+  /* Rolagem por toque suave para tabelas, grades e listas no tablet */
+  .tablet-touch-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
