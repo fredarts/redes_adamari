@@ -100,41 +100,70 @@ High-end commercial Brazilian lifestyle, warm natural afternoon sunlight, cozy r
 
     // Se GEMINI_API_KEY estiver configurada ou preenchida na tela:
     if (geminiApiKey && geminiApiKey.length > 10) {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      // Obrigatório apiVersion: "v1beta" para suporte ao Nano Banana 2.1 e tipos "text"/"image" no interactions API
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey, apiVersion: "v1beta" });
 
       const inputParts: Array<
         | { type: "text"; text: string }
         | { type: "image"; mime_type: string; data: string }
       > = [{ type: "text", text: fullVisualPrompt }];
 
-      // Anexa a imagem de referência real
+      // Anexa as imagens de referência reais do ateliê
       for (const fname of refFilenames.slice(0, 2)) {
-        const refFilePath = path.join(process.cwd(), "public", "images", fname);
-        if (fs.existsSync(refFilePath)) {
-          const imgBuffer = fs.readFileSync(refFilePath);
-          inputParts.push({
-            type: "image",
-            mime_type: "image/jpeg",
-            data: imgBuffer.toString("base64"),
-          });
+        let loaded = false;
+        try {
+          const refFilePath = path.join(process.cwd(), "public", "images", fname);
+          if (fs.existsSync && fs.existsSync(refFilePath)) {
+            const imgBuffer = fs.readFileSync(refFilePath);
+            inputParts.push({
+              type: "image",
+              mime_type: "image/jpeg",
+              data: imgBuffer.toString("base64"),
+            });
+            loaded = true;
+          }
+        } catch {}
+
+        // Fallback para ambiente serverless/edge buscando do asset estático
+        if (!loaded) {
+          try {
+            const origin = new URL(request.url).origin;
+            const fetchRes = await fetch(`${origin}/images/${fname}`);
+            if (fetchRes.ok) {
+              const arrayBuf = await fetchRes.arrayBuffer();
+              const base64Str = Buffer.from(arrayBuf).toString("base64");
+              inputParts.push({
+                type: "image",
+                mime_type: "image/jpeg",
+                data: base64Str,
+              });
+            }
+          } catch {}
         }
       }
 
-      const imageInteraction = await ai.interactions.create({
-        model: "gemini-nano-banana-2.1",
-        input: inputParts,
-        response_format: {
-          type: "image",
-          mime_type: "image/jpeg",
-          aspect_ratio: aspectRatio,
-        },
-      });
-
       let imageUrl = `/images/${primaryRefFilename}`;
-      const generatedImage = imageInteraction.output_image;
-      if (generatedImage && generatedImage.data) {
-        const mime = generatedImage.mime_type || "image/jpeg";
-        imageUrl = `data:${mime};base64,${generatedImage.data}`;
+      let modelNotice: string | undefined;
+
+      try {
+        const imageInteraction = await ai.interactions.create({
+          model: "gemini-nano-banana-2.1",
+          input: inputParts,
+          response_format: {
+            type: "image",
+            mime_type: "image/jpeg",
+            aspect_ratio: aspectRatio,
+          },
+        });
+
+        const generatedImage = imageInteraction.output_image;
+        if (generatedImage && generatedImage.data) {
+          const mime = generatedImage.mime_type || "image/jpeg";
+          imageUrl = `data:${mime};base64,${generatedImage.data}`;
+        }
+      } catch (imgErr: any) {
+        console.warn("[Gemini Nano Banana Image Generation Warning]:", imgErr);
+        modelNotice = `Aviso do Google Gemini: ${imgErr?.message || "Não foi possível gerar a nova imagem no momento"}. Exibindo a foto real de referência com as 3 legendas geradas pela IA.`;
       }
 
       // Gera legendas persuasivas com o Gemini 4 Hydrogen
@@ -181,6 +210,7 @@ Separe as 3 opções exatamente com o divisor "---OPCAO---".`,
         captions: generatedCaptions,
         promptUsed: fullVisualPrompt,
         post: saved,
+        notice: modelNotice,
       });
     }
 

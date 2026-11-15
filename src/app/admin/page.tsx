@@ -255,6 +255,7 @@ export default function AdminDashboardPage() {
   const [geminiApiKey, setGeminiApiKey] = useState<string>("");
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
   const [apiKeySavedNotice, setApiKeySavedNotice] = useState<boolean>(false);
+  const [studioErrorNotice, setStudioErrorNotice] = useState<string | null>(null);
 
   const setGlobalStockMap = useCartStore((s) => s.setStockMap);
 
@@ -806,6 +807,7 @@ export default function AdminDashboardPage() {
   const handleGenerateStudioPost = async (e: React.FormEvent) => {
     e.preventDefault();
     setStudioLoading(true);
+    setStudioErrorNotice(null);
     try {
       const res = await fetch("/api/admin/social-studio", {
         method: "POST",
@@ -832,10 +834,10 @@ export default function AdminDashboardPage() {
         });
         await loadDashboard(adminKey);
       } else {
-        alert(json.error || "Erro ao gerar post no Estúdio IA.");
+        setStudioErrorNotice(json.error || "Erro ao gerar post no Estúdio IA.");
       }
     } catch (err: any) {
-      alert("Falha ao comunicar com o Estúdio IA: " + (err?.message || "Erro de rede"));
+      setStudioErrorNotice("Falha ao comunicar com o Estúdio IA: " + (err?.message || "Erro de rede"));
     } finally {
       setStudioLoading(false);
     }
@@ -3231,6 +3233,13 @@ export default function AdminDashboardPage() {
                     className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] p-3 text-xs text-[#2C1E18]"
                   />
                 </div>
+
+                {studioErrorNotice && (
+                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 font-semibold flex items-start gap-2">
+                    <X className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span>{studioErrorNotice}</span>
+                  </div>
+                )}
 
                 <button
                   type="submit"
