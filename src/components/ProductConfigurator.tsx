@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Check,
   ShoppingBag,
@@ -12,6 +12,8 @@ import {
   Plus,
   Minus,
   CheckCircle2,
+  AlertTriangle,
+  PackageCheck,
 } from "lucide-react";
 import {
   PRODUCTS,
@@ -21,7 +23,7 @@ import {
   type ProductId,
   type SizeCode,
 } from "@/data/products";
-import { useCartStore } from "@/store/cartStore";
+import { useCartStore, getSkuKey } from "@/store/cartStore";
 import { HammockVisualizer } from "./HammockVisualizer";
 
 export function ProductConfigurator() {
@@ -35,11 +37,48 @@ export function ProductConfigurator() {
   const [justAdded, setJustAdded] = useState<boolean>(false);
 
   const addItem = useCartStore((s) => s.addItem);
+  const stockMap = useCartStore((s) => s.stockMap);
+  const stockLoaded = useCartStore((s) => s.stockLoaded);
+  const fetchStock = useCartStore((s) => s.fetchStock);
+  const cartItems = useCartStore((s) => s.items);
+
+  useEffect(() => {
+    fetchStock();
+  }, [fetchStock]);
 
   const product = PRODUCTS[selectedProductId];
   const sizeSpec = product.sizes[selectedSizeCode];
   const selectedColor =
     TACTEL_COLORS.find((c) => c.id === selectedColorId) || TACTEL_COLORS[0];
+
+  const currentSku = getSkuKey(
+    selectedProductId,
+    selectedSizeCode,
+    selectedColorId
+  );
+  const totalSkuStock = stockLoaded ? (stockMap[currentSku] ?? 10) : 10;
+
+  // Quantidade que o cliente já colocou na sacola desta mesma variação
+  const inCartQty =
+    cartItems.find(
+      (i) =>
+        i.productId === selectedProductId &&
+        i.size === selectedSizeCode &&
+        i.colorId === selectedColorId
+    )?.quantity || 0;
+
+  const remainingToAdd = Math.max(0, totalSkuStock - inCartQty);
+  const isOutOfStock = totalSkuStock <= 0;
+  const isLowStock = totalSkuStock > 0 && totalSkuStock <= 3;
+
+  // Garante que o seletor de quantidade nunca ultrapasse o saldo disponível
+  useEffect(() => {
+    if (remainingToAdd > 0 && quantity > remainingToAdd) {
+      setQuantity(remainingToAdd);
+    } else if (remainingToAdd === 0 && quantity !== 1) {
+      setQuantity(1);
+    }
+  }, [remainingToAdd, quantity]);
 
   const installmentValue = sizeSpec.priceCard / 3;
   const pixDiscountPercent = Math.round(
@@ -47,7 +86,15 @@ export function ProductConfigurator() {
   );
 
   const handleAddToCart = () => {
-    addItem(selectedProductId, selectedSizeCode, selectedColorId, quantity);
+    if (isOutOfStock || remainingToAdd <= 0) return;
+    const safeQty = Math.min(quantity, remainingToAdd);
+    addItem(
+      selectedProductId,
+      selectedSizeCode,
+      selectedColorId,
+      safeQty,
+      totalSkuStock
+    );
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1800);
   };
@@ -160,7 +207,7 @@ export function ProductConfigurator() {
 
       {/* GRID PRINCIPAL: GALERIA DE FOTOS REAIS + SELETOR DE COR E TAMANHO */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-        {/* Coluna Esquerda: Galeria de Fotos Reais + Simulador (7 colunas) */}
+        {/* Coluna Esquerda: Galeria de Fotos Reais (7 colunas) */}
         <div className="lg:col-span-7 lg:sticky lg:top-26 space-y-4">
           <HammockVisualizer
             product={product}
@@ -181,7 +228,7 @@ export function ProductConfigurator() {
           </div>
         </div>
 
-        {/* Coluna Direita: Painel de Escolha de Cor, Tamanho e Compra (5 colunas) */}
+        {/* Coluna Direita: Painel de Escolha de Cor, Tamanho, Estoque e Compra (5 colunas) */}
         <div className="lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-7 border border-[#E6DEC8] shadow-warm space-y-6">
           {/* Título e Bloco de Preço */}
           <div className="border-b border-[#EFE8D8] pb-5">
@@ -231,7 +278,7 @@ export function ProductConfigurator() {
             </div>
           </div>
 
-          {/* PASSO 2: AS 10 CORES DO TECIDO TACTEL COM BRILHO ACETINADO */}
+          {/* PASSO 2: AS 10 CORES DO TECIDO TACTEL COM INDICADOR DE ESTOQUE */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-bold text-[#2C1E18]">
@@ -249,23 +296,44 @@ export function ProductConfigurator() {
             <div className="grid grid-cols-5 gap-2.5">
               {TACTEL_COLORS.map((color) => {
                 const isSelected = color.id === selectedColorId;
+                const colorSku = getSkuKey(
+                  selectedProductId,
+                  selectedSizeCode,
+                  color.id
+                );
+                const colorStock = stockLoaded
+                  ? (stockMap[colorSku] ?? 10)
+                  : 10;
+                const colorZero = colorStock <= 0;
+
                 return (
                   <button
                     key={color.id}
                     type="button"
                     onClick={() => setSelectedColorId(color.id)}
-                    title={color.name}
-                    className={`group flex flex-col items-center p-1.5 rounded-2xl border transition-all cursor-pointer ${
+                    title={
+                      colorZero
+                        ? `${color.name} (Esgotado no tam. ${selectedSizeCode})`
+                        : `${color.name} (${colorStock} un. em estoque)`
+                    }
+                    className={`group relative flex flex-col items-center p-1.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
                         ? "border-[#D95D39] bg-[#FDF8F2] ring-2 ring-[#D95D39]/25 scale-[1.03]"
-                        : "border-[#E6DEC8] hover:border-[#C9B89A] bg-white"
+                        : colorZero
+                          ? "border-[#E6DEC8] bg-[#FAF6F0]/60 opacity-65"
+                          : "border-[#E6DEC8] hover:border-[#C9B89A] bg-white"
                     }`}
                   >
                     <span
-                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-inner border border-black/15 relative transition-transform group-hover:scale-105 tactel-swatch-sheen"
+                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-inner border border-black/15 relative transition-transform group-hover:scale-105 tactel-swatch-sheen overflow-hidden"
                       style={{ backgroundColor: color.hex }}
                     >
-                      {isSelected && (
+                      {colorZero && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                          <span className="w-full h-0.5 bg-white/90 -rotate-45 block" />
+                        </span>
+                      )}
+                      {isSelected && !colorZero && (
                         <Check
                           className={`w-5 h-5 stroke-[3] drop-shadow-xs ${
                             color.id === "amarelo-sol"
@@ -279,6 +347,11 @@ export function ProductConfigurator() {
                       {color.name.split(" ")[0]}{" "}
                       {color.name.split(" ")[1] || ""}
                     </span>
+                    {colorZero && (
+                      <span className="text-[9px] font-extrabold text-red-700 uppercase">
+                        Esgotado
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -296,7 +369,7 @@ export function ProductConfigurator() {
             </p>
           </div>
 
-          {/* PASSO 3: OS 4 TAMANHOS (M, G, GG, XGG) */}
+          {/* PASSO 3: OS 4 TAMANHOS (M, G, GG, XGG) COM ESTOQUE */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-bold text-[#2C1E18]">
@@ -314,15 +387,25 @@ export function ProductConfigurator() {
               {SIZE_ORDER.map((code) => {
                 const s = product.sizes[code];
                 const isSelected = selectedSizeCode === code;
+                const sizeSku = getSkuKey(
+                  selectedProductId,
+                  code,
+                  selectedColorId
+                );
+                const sizeStock = stockLoaded ? (stockMap[sizeSku] ?? 10) : 10;
+                const sizeZero = sizeStock <= 0;
+
                 return (
                   <button
                     key={code}
                     type="button"
                     onClick={() => setSelectedSizeCode(code)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                    className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                       isSelected
                         ? "border-[#2C1E18] bg-[#2C1E18] text-white shadow-md scale-[1.02]"
-                        : "border-[#E6DEC8] bg-[#FAF6F0] text-[#2C1E18] hover:border-[#C9B89A]"
+                        : sizeZero
+                          ? "border-[#E6DEC8] bg-[#F5EFE6]/70 text-[#8C6D58] opacity-75"
+                          : "border-[#E6DEC8] bg-[#FAF6F0] text-[#2C1E18] hover:border-[#C9B89A]"
                     }`}
                   >
                     <span className="font-serif-editorial text-lg font-bold tracking-tight">
@@ -330,10 +413,14 @@ export function ProductConfigurator() {
                     </span>
                     <span
                       className={`text-xs font-bold mt-0.5 ${
-                        isSelected ? "text-amber-300" : "text-[#1E4620]"
+                        isSelected
+                          ? "text-amber-300"
+                          : sizeZero
+                            ? "text-red-700"
+                            : "text-[#1E4620]"
                       }`}
                     >
-                      {formatBRL(s.pricePix)}
+                      {sizeZero ? "Esgotado" : formatBRL(s.pricePix)}
                     </span>
                   </button>
                 );
@@ -369,25 +456,60 @@ export function ProductConfigurator() {
             </div>
           </div>
 
-          {/* BOTÃO DE COMPRA COM GRADIENTE PÔR DO SOL */}
+          {/* STATUS DE ESTOQUE EM TEMPO REAL + BOTÃO DE COMPRA */}
           <div className="pt-1 space-y-3">
+            {/* Aviso de Disponibilidade da Combinação Escolhida */}
+            {isOutOfStock ? (
+              <div className="p-3 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-2.5 text-xs text-red-800 font-semibold">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  A cor <strong>{selectedColor.name}</strong> no tamanho{" "}
+                  <strong>{selectedSizeCode}</strong> está esgotada no momento.
+                  Escolha outra cor ou tamanho acima!
+                </span>
+              </div>
+            ) : isLowStock ? (
+              <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-2 text-xs text-amber-900 font-bold">
+                <span className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-[#D95D39] shrink-0" />
+                  🔥 Restam apenas <strong>{totalSkuStock} unidades</strong>{" "}
+                  nesta cor e tamanho!
+                </span>
+                <span className="text-[10px] uppercase tracking-wider bg-amber-200/70 px-2 py-0.5 rounded-full">
+                  Últimas Peças
+                </span>
+              </div>
+            ) : (
+              <div className="px-3 py-2 rounded-xl bg-[#E9F3E8]/70 border border-[#C6E2C3] flex items-center justify-between text-xs text-[#1E4620] font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <PackageCheck className="w-4 h-4 shrink-0" />
+                  Estoque disponível ({totalSkuStock} unidades prontas)
+                </span>
+                <span className="text-[11px] font-bold">Envio Imediato</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <div className="flex items-center border border-[#D4C5A9] rounded-2xl bg-[#FAF6F0] p-1">
                 <button
                   type="button"
+                  disabled={isOutOfStock || quantity <= 1}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-10 h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white transition cursor-pointer"
+                  className="w-10 h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-40 transition cursor-pointer"
                   aria-label="Diminuir quantidade"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <span className="w-9 text-center font-extrabold text-base text-[#2C1E18]">
-                  {quantity}
+                  {isOutOfStock ? 0 : quantity}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="w-10 h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white transition cursor-pointer"
+                  disabled={isOutOfStock || quantity >= remainingToAdd}
+                  onClick={() =>
+                    setQuantity((q) => Math.min(remainingToAdd, q + 1))
+                  }
+                  className="w-10 h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-40 transition cursor-pointer"
                   aria-label="Aumentar quantidade"
                 >
                   <Plus className="w-4 h-4" />
@@ -396,10 +518,19 @@ export function ProductConfigurator() {
 
               <button
                 type="button"
+                disabled={isOutOfStock || remainingToAdd <= 0}
                 onClick={handleAddToCart}
-                className="flex-1 h-13 rounded-2xl bg-solar-gradient active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#D95D39]/30 flex items-center justify-center gap-2 px-5 transition-all cursor-pointer"
+                className={`flex-1 h-13 rounded-2xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 px-5 transition-all ${
+                  isOutOfStock || remainingToAdd <= 0
+                    ? "bg-[#D4C5A9] text-[#5C4438] cursor-not-allowed"
+                    : "bg-solar-gradient active:scale-[0.99] text-white shadow-lg shadow-[#D95D39]/30 cursor-pointer"
+                }`}
               >
-                {justAdded ? (
+                {isOutOfStock ? (
+                  "Cor / Tamanho Esgotado"
+                ) : remainingToAdd <= 0 ? (
+                  "Limite do Estoque na Sacola"
+                ) : justAdded ? (
                   <>
                     <Check className="w-5 h-5 stroke-[3]" />
                     Rede Adicionada!

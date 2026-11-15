@@ -892,7 +892,7 @@ export default function HomePage() {
               reservados. Conforme Decreto Federal nº 7.962/2013 e Lei nº
               8.078/1990 (CDC).
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <a
                 href="/trocas-e-devolucoes"
                 className="hover:text-white transition"
@@ -902,6 +902,13 @@ export default function HomePage() {
               <span>•</span>
               <a href="#duvidas" className="hover:text-white transition">
                 Dúvidas Frequentes
+              </a>
+              <span>•</span>
+              <a
+                href="/admin"
+                className="text-amber-300/80 hover:text-amber-200 font-semibold transition"
+              >
+                Painel Admin
               </a>
             </div>
           </div>

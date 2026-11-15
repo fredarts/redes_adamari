@@ -1,0 +1,2050 @@
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import {
+  BarChart3,
+  Package,
+  Truck,
+  Sparkles,
+  Mail,
+  MessageCircle,
+  Printer,
+  RefreshCw,
+  Lock,
+  CheckCircle2,
+  AlertTriangle,
+  Search,
+  ExternalLink,
+  Copy,
+  Check,
+  Download,
+  Boxes,
+  Plus,
+  Minus,
+  MapPin,
+  TrendingUp,
+  Palette,
+  Ruler,
+  Send,
+  Users,
+  Wand2,
+  ArrowLeft,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+import {
+  PRODUCTS,
+  TACTEL_COLORS,
+  SIZE_ORDER,
+  formatBRL,
+  type ProductId,
+  type SizeCode,
+} from "@/data/products";
+import { useCartStore } from "@/store/cartStore";
+import type {
+  FulfillmentStatus,
+  InventoryItem,
+  OrderRecord,
+  PaymentStatus,
+  CustomerRecord,
+  SocialPostRecord,
+} from "@/lib/supabaseAdmin";
+
+interface DashboardResponse {
+  supabaseConnected: boolean;
+  kpis: {
+    totalRevenue: number;
+    pendingRevenue: number;
+    averageTicket: number;
+    totalOrders: number;
+    approvedOrdersCount: number;
+    pendingOrdersCount: number;
+    toShipCount: number;
+    inTransitCount: number;
+    deliveredCount: number;
+    totalUnitsSold: number;
+    totalStockUnits: number;
+    outOfStockCount: number;
+    lowStockCount: number;
+  };
+  rankings: {
+    products: Array<{
+      productId: ProductId;
+      name: string;
+      unitsSold: number;
+      revenue: number;
+    }>;
+    sizes: Array<{
+      size: SizeCode;
+      label: string;
+      unitsSold: number;
+      revenue: number;
+    }>;
+    colors: Array<{
+      colorId: string;
+      colorName: string;
+      hex: string;
+      unitsSold: number;
+      revenue: number;
+      currentStock: number;
+    }>;
+    states: Array<{
+      uf: string;
+      ordersCount: number;
+      unitsSold: number;
+      revenue: number;
+      cities: Array<{ city: string; count: number }>;
+    }>;
+  };
+  orders: OrderRecord[];
+  customers: CustomerRecord[];
+  inventory: InventoryItem[];
+  socialPosts: SocialPostRecord[];
+}
+
+type AdminTab =
+  | "overview"
+  | "orders"
+  | "inventory"
+  | "marketing"
+  | "social_studio";
+
+export default function AdminDashboardPage() {
+  const [adminKey, setAdminKey] = useState<string>("adamari2026");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [data, setData] = useState<DashboardResponse | null>(null);
+
+  // Estado da Aba de Pedidos & Etiquetas
+  const [orderFilter, setOrderFilter] = useState<string>("all");
+  const [orderSearch, setOrderSearch] = useState<string>("");
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>(
+    {}
+  );
+  const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [labelOrder, setLabelOrder] = useState<OrderRecord | null>(null);
+
+  // Estado da Aba de Controle de Estoque
+  const [stockProductFilter, setStockProductFilter] =
+    useState<ProductId>("rede-tradicional");
+  const [editedStock, setEditedStock] = useState<Record<string, number>>({});
+  const [savingStock, setSavingStock] = useState<boolean>(false);
+  const [stockSavedFeedback, setStockSavedFeedback] = useState<string>("");
+
+  // Estado da Aba de Marketing (E-mail & WhatsApp)
+  const [mktSegment, setMktSegment] = useState<
+    "all" | "pending_pix" | "approved"
+  >("all");
+  const [emailSubject, setEmailSubject] = useState<string>(
+    "🌞 Novidade no Ateliê Adamari: Cores Vibrantes de Tactel Prontas para Envio!"
+  );
+  const [emailHeadline, setEmailHeadline] = useState<string>(
+    "Sua varanda merece o conforto fresco da Rede Adamari!"
+  );
+  const [emailBody, setEmailBody] = useState<string>(
+    "Olá {nome}, tudo bem?\n\nAcabamos de finalizar um lote novinho de Redes em Tecido Tactel com punhos reforçados 2,5mm c/ proteção UV aqui no nosso ateliê em Tabuleiro do Norte - CE.\n\nAproveite o desconto especial no PIX e Frete Grátis acima de R$ 249 para todo o Brasil!"
+  );
+  const [emailCoupon, setEmailCoupon] = useState<string>("ADAMARI10");
+  const [emailCtaText, setEmailCtaText] = useState<string>(
+    "Escolher Minha Rede com Desconto"
+  );
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [emailResultNotice, setEmailResultNotice] = useState<string>("");
+  const [whatsappTemplate, setWhatsappTemplate] = useState<string>(
+    "Olá {nome}, tudo bem? Aqui é do Ateliê Redes Adamari! 🌞 Passando para avisar que temos pronta entrega das nossas redes em Tactel com desconto no PIX: https://redes-adamari.fredericomonteiromendesmaia.workers.dev"
+  );
+
+  // Estado da Aba Estúdio IA (Gemini Nano Banana)
+  const [studioProduct, setStudioProduct] =
+    useState<ProductId>("rede-tradicional");
+  const [studioColorId, setStudioColorId] = useState<string>("azul-turquesa");
+  const [studioAspectRatio, setStudioAspectRatio] = useState<
+    "1:1" | "9:16" | "16:9"
+  >("1:1");
+  const [studioScene, setStudioScene] = useState<string>(
+    "Varanda aconchegante de praia no Ceará com coqueiros ao fundo, mesa de madeira com água de coco e sol dourado da tarde"
+  );
+  const [studioCampaignFocus, setStudioCampaignFocus] = useState<string>(
+    "Destaque para o tecido Tactel fresco que não esquenta nas costas, bolsinho lateral e desconto no PIX"
+  );
+  const [studioLoading, setStudioLoading] = useState<boolean>(false);
+  const [studioResult, setStudioResult] = useState<{
+    imageUrl: string;
+    captions: string[];
+    modelUsed: string;
+    notice?: string;
+  } | null>(null);
+  const [copiedCaptionIdx, setCopiedCaptionIdx] = useState<number | null>(null);
+
+  const setGlobalStockMap = useCartStore((s) => s.setStockMap);
+
+  const loadDashboard = useCallback(
+    async (keyToUse: string) => {
+      setLoading(true);
+      setAuthError("");
+      try {
+        const res = await fetch("/api/admin/dashboard", {
+          headers: { "x-admin-key": keyToUse },
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setIsAuthenticated(false);
+          setAuthError(json.error || "Senha inválida.");
+          return;
+        }
+        setData(json);
+        setIsAuthenticated(true);
+
+        // Preenche mapa de estoque editável e sincroniza com a loja
+        const initialStock: Record<string, number> = {};
+        for (const item of json.inventory || []) {
+          initialStock[item.sku] = item.stockQuantity;
+        }
+        setEditedStock(initialStock);
+        setGlobalStockMap(initialStock);
+
+        // Preenche códigos de rastreio existentes
+        const trackMap: Record<string, string> = {};
+        for (const ord of json.orders || []) {
+          trackMap[ord.id] = ord.trackingCode || "";
+        }
+        setTrackingInputs(trackMap);
+      } catch {
+        setAuthError("Erro de conexão ao carregar o painel.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setGlobalStockMap]
+  );
+
+  useEffect(() => {
+    const savedKey = sessionStorage.getItem("adamari_admin_key");
+    if (savedKey) {
+      setAdminKey(savedKey);
+      loadDashboard(savedKey);
+    }
+  }, [loadDashboard]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    sessionStorage.setItem("adamari_admin_key", adminKey);
+    await loadDashboard(adminKey);
+  };
+
+  // ==========================================================================
+  // AÇÕES DE PEDIDOS E ENTREGAS
+  // ==========================================================================
+  const handleUpdateOrder = async (
+    orderId: string,
+    changes: {
+      paymentStatus?: PaymentStatus;
+      fulfillmentStatus?: FulfillmentStatus;
+      trackingCode?: string;
+    }
+  ) => {
+    setSavingOrderId(orderId);
+    try {
+      const res = await fetch("/api/admin/dashboard", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({ orderId, ...changes }),
+      });
+      const json = await res.json();
+      if (res.ok && json.analytics) {
+        setData(json.analytics);
+        const updatedStock: Record<string, number> = {};
+        for (const item of json.analytics.inventory || []) {
+          updatedStock[item.sku] = item.stockQuantity;
+        }
+        setEditedStock(updatedStock);
+        setGlobalStockMap(updatedStock);
+      }
+    } finally {
+      setSavingOrderId(null);
+    }
+  };
+
+  // ==========================================================================
+  // AÇÕES DE CONTROLE DE ESTOQUE (GRADE CORES x TAMANHOS)
+  // ==========================================================================
+  const handleAdjustLocalSku = (sku: string, newQty: number) => {
+    const clean = Math.max(0, Math.floor(Number(newQty) || 0));
+    setEditedStock((prev) => ({ ...prev, [sku]: clean }));
+  };
+
+  const handleSaveStockChanges = async (
+    customUpdates?: Array<{ sku: string; stockQuantity: number }>
+  ) => {
+    setSavingStock(true);
+    setStockSavedFeedback("");
+    try {
+      const updates =
+        customUpdates ||
+        Object.entries(editedStock).map(([sku, stockQuantity]) => ({
+          sku,
+          stockQuantity,
+        }));
+
+      const res = await fetch("/api/inventory", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({ updates }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.stockMap) {
+        setEditedStock(json.stockMap);
+        setGlobalStockMap(json.stockMap);
+        await loadDashboard(adminKey);
+        setStockSavedFeedback(
+          "✓ Estoque salvo e sincronizado com a loja em tempo real!"
+        );
+        setTimeout(() => setStockSavedFeedback(""), 3500);
+      }
+    } finally {
+      setSavingStock(false);
+    }
+  };
+
+  const handleSetRowColorStock = async (
+    productId: ProductId,
+    colorId: string,
+    qty: number
+  ) => {
+    const updates = SIZE_ORDER.map((size) => ({
+      sku: `${productId}-${size}-${colorId}`,
+      stockQuantity: qty,
+    }));
+    await handleSaveStockChanges(updates);
+  };
+
+  // ==========================================================================
+  // AÇÕES DE MARKETING (E-MAIL & WHATSAPP)
+  // ==========================================================================
+  const filteredCustomers = (data?.customers || []).filter((c) => {
+    if (mktSegment === "pending_pix") return c.hasPendingPix;
+    if (mktSegment === "approved") return !c.hasPendingPix && c.totalSpent > 0;
+    return true;
+  });
+
+  const applyEmailTemplate = (type: "launch" | "pix_recovery" | "shipping") => {
+    if (type === "launch") {
+      setEmailSubject(
+        "🌞 Lote Novo no Ateliê Adamari: Redes em Tactel c/ Desconto no PIX!"
+      );
+      setEmailHeadline(
+        "Cores vibrantes e frescor garantido para o seu descanso"
+      );
+      setEmailBody(
+        "Olá {nome}, tudo bem?\n\nAcabamos de repor o estoque das nossas Redes de Dormir Tradicionais e com Mosquiteiro em todas as 10 cores de Tactel!\n\nElas não esquentam nas costas, secam em minutos e têm punhos em corda 2,5mm com proteção solar UV."
+      );
+      setEmailCoupon("ADAMARI10");
+      setEmailCtaText("Ver Cores Disponíveis no Site");
+    } else if (type === "pix_recovery") {
+      setEmailSubject(
+        "⏰ {nome}, sua Rede Adamari ainda está reservada no estoque!"
+      );
+      setEmailHeadline("Separamos a sua rede aqui no Ateliê Adamari");
+      setEmailBody(
+        "Olá {nome}!\n\nVimos que você escolheu sua Rede Adamari no site, mas o pagamento via PIX ficou pendente.\n\nSua cor e tamanho ainda estão reservados no nosso estoque em Tabuleiro do Norte - CE! Finalize agora mesmo garantindo o desconto exclusivo à vista."
+      );
+      setEmailCoupon("PIXDESCONTO");
+      setEmailCtaText("Concluir Meu Pedido Agora");
+    } else {
+      setEmailSubject(
+        "🚚 Frete Grátis Especial Fim de Semana — Redes Adamari!"
+      );
+      setEmailHeadline("Leve 2 Redes Adamari e Ganhe Frete Grátis!");
+      setEmailBody(
+        "Olá {nome}!\n\nNeste fim de semana, todas as compras acima de R$ 249 ganham Frete Grátis automático para qualquer estado do Brasil.\n\nAproveite para garantir uma rede para a varanda e outra com mosquiteiro para viagens!"
+      );
+      setEmailCoupon("FRETEGRATIS");
+      setEmailCtaText("Aproveitar Frete Grátis");
+    }
+  };
+
+  const handleSendEmailCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingEmail(true);
+    setEmailResultNotice("");
+    try {
+      const res = await fetch("/api/admin/marketing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({
+          subject: emailSubject,
+          headline: emailHeadline,
+          messageBody: emailBody,
+          couponCode: emailCoupon,
+          ctaText: emailCtaText,
+          ctaUrl:
+            "https://redes-adamari.fredericomonteiromendesmaia.workers.dev/#configurador",
+          recipients: filteredCustomers.map((c) => ({
+            name: c.name,
+            email: c.email,
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setEmailResultNotice(
+          json.notice ||
+            `Sucesso! ${json.sentCount} e-mail(s) enviados pela campanha.`
+        );
+      } else {
+        setEmailResultNotice(json.error || "Erro ao enviar campanha.");
+      }
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  // ==========================================================================
+  // AÇÕES DO ESTÚDIO GEMINI NANO BANANA
+  // ==========================================================================
+  const handleGenerateStudioPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStudioLoading(true);
+    try {
+      const res = await fetch("/api/admin/social-studio", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({
+          productId: studioProduct,
+          colorId: studioColorId,
+          aspectRatio: studioAspectRatio,
+          scenePrompt: studioScene,
+          campaignFocus: studioCampaignFocus,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setStudioResult({
+          imageUrl: json.imageUrl,
+          captions: json.captions || [],
+          modelUsed: json.modelUsed,
+          notice: json.notice,
+        });
+        await loadDashboard(adminKey);
+      }
+    } finally {
+      setStudioLoading(false);
+    }
+  };
+
+  // ==========================================================================
+  // TELA DE LOGIN DO ADMIN
+  // ==========================================================================
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#FAF6F0] flex flex-col justify-center items-center p-4">
+        <div className="w-full max-w-md bg-white rounded-[32px] border border-[#E6DEC8] shadow-warm-lg p-7 sm:p-9 space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <img
+              src="/images/logo.png"
+              alt="Ateliê Adamari"
+              className="w-20 h-20 object-contain rounded-full border-2 border-[#E6DEC8] shadow-sm mb-3"
+            />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221] bg-[#F5E6D3] px-3 py-1 rounded-full">
+              <Lock className="w-3.5 h-3.5" /> Gestão Exclusiva • Tabuleiro do
+              Norte/CE
+            </span>
+            <h1 className="font-serif-editorial text-2xl sm:text-3xl font-bold text-[#2C1E18] mt-2">
+              Painel Admin Adamari
+            </h1>
+            <p className="text-xs sm:text-sm text-[#5C4438] mt-1">
+              Controle de vendas, entregas, estoque de cores/tamanhos, marketing
+              e Estúdio Gemini Nano Banana.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#2C1E18] mb-1.5">
+                Senha do Administrador:
+              </label>
+              <input
+                type="password"
+                required
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Digite a senha do painel"
+                className="w-full rounded-2xl border border-[#D4C5A9] bg-[#FAF6F0] px-4 py-3 text-sm font-bold text-[#2C1E18] focus:outline-none focus:border-[#D95D39]"
+              />
+              <p className="text-[11px] text-[#7A6252] mt-1.5">
+                * Senha inicial padrão:{" "}
+                <code className="font-bold text-[#2C1E18] bg-[#F3ECE0] px-1.5 py-0.5 rounded">
+                  adamari2026
+                </code>{" "}
+                (alterável via variável <code>ADMIN_PASSWORD</code>).
+              </p>
+            </div>
+
+            {authError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl bg-solar-gradient text-white font-extrabold text-sm shadow-lg shadow-[#D95D39]/25 hover:opacity-95 transition cursor-pointer"
+            >
+              {loading ? "Entrando no Painel..." : "Acessar Painel de Gestão"}
+            </button>
+          </form>
+
+          <div className="pt-3 border-t border-[#EFE8D8] text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5C4438] hover:text-[#D95D39]"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Voltar para a Loja Pública
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const kpis = data?.kpis;
+  const rankings = data?.rankings;
+
+  const filteredOrders = (data?.orders || []).filter((ord) => {
+    if (orderFilter === "to_ship" && ord.fulfillmentStatus !== "separando")
+      return false;
+    if (orderFilter === "pending_pix" && ord.paymentStatus !== "pending")
+      return false;
+    if (orderFilter === "shipped" && ord.fulfillmentStatus !== "enviado")
+      return false;
+    if (orderFilter === "delivered" && ord.fulfillmentStatus !== "entregue")
+      return false;
+
+    if (orderSearch.trim()) {
+      const q = orderSearch.toLowerCase();
+      return (
+        ord.orderReference.toLowerCase().includes(q) ||
+        ord.customerName.toLowerCase().includes(q) ||
+        ord.city.toLowerCase().includes(q) ||
+        ord.uf.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  return (
+    <div className="min-h-screen bg-[#FAF6F0] text-[#2C1E18] flex flex-col">
+      {/* TOPBAR EXECUTIVA DO PAINEL ADMIN */}
+      <header className="sticky top-0 z-30 bg-[#2C1E18] text-[#FAF6F0] border-b border-[#4A3728] px-4 sm:px-8 py-3.5 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/logo.png"
+              alt="Ateliê Adamari"
+              className="w-11 h-11 rounded-full bg-[#FAF6F0] p-0.5 object-contain"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-serif-editorial text-lg sm:text-xl font-bold text-white">
+                  Redes Adamari • Central Admin
+                </h1>
+                <span
+                  className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                    data?.supabaseConnected
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                      : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                  }`}
+                >
+                  {data?.supabaseConnected
+                    ? "Supabase Conectado"
+                    : "Banco Ativo (Modo Híbrido)"}
+                </span>
+              </div>
+              <p className="text-xs text-[#C9B89A]">
+                Expedição Tabuleiro do Norte – CE • Gestão de Vendas, Estoque,
+                Marketing & IA
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => loadDashboard(adminKey)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#3D2B22] hover:bg-[#4E382D] text-xs font-bold text-[#FAF6F0] border border-[#5C4438] transition cursor-pointer"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+              />
+              Atualizar Dados
+            </button>
+            <Link
+              href="/"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-solar-gradient text-xs font-extrabold text-white shadow-sm"
+            >
+              Ver Loja <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* BARRA DE NAVEGAÇÃO DAS 5 ABAS */}
+        <div className="max-w-7xl mx-auto mt-3 pt-2 border-t border-[#3D2B22] flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {[
+            {
+              id: "overview",
+              label: "1. Visão Geral & Rankings",
+              icon: BarChart3,
+              badge: null,
+            },
+            {
+              id: "orders",
+              label: "2. Pedidos, Entregas & Etiquetas",
+              icon: Truck,
+              badge: kpis?.toShipCount ? `${kpis.toShipCount} p/ enviar` : null,
+            },
+            {
+              id: "inventory",
+              label: "3. Controle de Estoque (Cores × Tam.)",
+              icon: Boxes,
+              badge:
+                kpis && kpis.outOfStockCount + kpis.lowStockCount > 0
+                  ? `${kpis.outOfStockCount + kpis.lowStockCount} alertas`
+                  : null,
+            },
+            {
+              id: "marketing",
+              label: "4. E-mail & WhatsApp Marketing",
+              icon: Mail,
+              badge: null,
+            },
+            {
+              id: "social_studio",
+              label: "5. Estúdio IA (Nano Banana)",
+              icon: Sparkles,
+              badge: "Novo",
+            },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as AdminTab)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
+                  active
+                    ? "bg-[#FAF6F0] text-[#2C1E18] shadow-sm"
+                    : "text-[#C9B89A] hover:text-white hover:bg-[#3D2B22]"
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 ${
+                    active ? "text-[#D95D39]" : "text-[#C9B89A]"
+                  }`}
+                />
+                {tab.label}
+                {tab.badge && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      active
+                        ? "bg-[#D95D39] text-white"
+                        : "bg-[#4E382D] text-amber-300"
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </header>
+
+      {/* CONTEÚDO PRINCIPAL DO DASHBOARD */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-8 space-y-8">
+        {/* ====================================================================
+            ABA 1: VISÃO GERAL & RANKINGS (PRODUTO, TAMANHO, COR, ESTADO)
+           ==================================================================== */}
+        {activeTab === "overview" && kpis && rankings && (
+          <div className="space-y-8">
+            {/* CARDS DE KPIS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm">
+                <div className="flex items-center justify-between text-xs font-bold text-[#7A6252]">
+                  <span>FATURAMENTO APROVADO</span>
+                  <TrendingUp className="w-4 h-4 text-[#1E4620]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-[#1E4620] mt-2">
+                  {formatBRL(kpis.totalRevenue)}
+                </div>
+                <p className="text-xs text-[#5C4438] mt-1">
+                  Ticket Médio: <strong>{formatBRL(kpis.averageTicket)}</strong>{" "}
+                  ({kpis.approvedOrdersCount} vendas pagas)
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm">
+                <div className="flex items-center justify-between text-xs font-bold text-[#7A6252]">
+                  <span>STATUS DE ENTREGAS</span>
+                  <Truck className="w-4 h-4 text-[#D95D39]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-[#2C1E18] mt-2">
+                  {kpis.toShipCount} p/ Despachar
+                </div>
+                <p className="text-xs text-[#5C4438] mt-1">
+                  <strong>{kpis.inTransitCount}</strong> em trânsito •{" "}
+                  <strong>{kpis.deliveredCount}</strong> entregues
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm">
+                <div className="flex items-center justify-between text-xs font-bold text-[#7A6252]">
+                  <span>AGUARDANDO PIX (RECUPERAR)</span>
+                  <MessageCircle className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-amber-700 mt-2">
+                  {formatBRL(kpis.pendingRevenue)}
+                </div>
+                <p className="text-xs text-[#5C4438] mt-1">
+                  <strong>{kpis.pendingOrdersCount}</strong> pedido(s)
+                  aguardando pagamento
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm">
+                <div className="flex items-center justify-between text-xs font-bold text-[#7A6252]">
+                  <span>SAÚDE DO ESTOQUE (80 SKUs)</span>
+                  <Boxes className="w-4 h-4 text-[#9C5221]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-[#2C1E18] mt-2">
+                  {kpis.totalStockUnits} redes
+                </div>
+                <p className="text-xs text-[#5C4438] mt-1">
+                  <strong className="text-red-600">
+                    {kpis.outOfStockCount} esgotadas
+                  </strong>{" "}
+                  •{" "}
+                  <strong className="text-amber-700">
+                    {kpis.lowStockCount} estoque baixo
+                  </strong>
+                </p>
+              </div>
+            </div>
+
+            {/* LINHA 2: QUAL MODELO E QUAL TAMANHO VENDE MAIS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Qual Modelo Vende Mais */}
+              <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
+                      <Package className="w-5 h-5 text-[#D95D39]" />
+                      Qual Modelo Vende Mais?
+                    </h2>
+                    <p className="text-xs text-[#7A6252]">
+                      Comparativo de unidades vendidas e receita por modelo
+                    </p>
+                  </div>
+                  <span className="text-xs font-extrabold bg-[#F5E6D3] text-[#9C5221] px-3 py-1 rounded-full">
+                    {kpis.totalUnitsSold} redes vendidas
+                  </span>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  {rankings.products.map((prod) => {
+                    const pct =
+                      kpis.totalUnitsSold > 0
+                        ? Math.round(
+                            (prod.unitsSold / kpis.totalUnitsSold) * 100
+                          )
+                        : 0;
+                    return (
+                      <div
+                        key={prod.productId}
+                        className="p-4 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-2"
+                      >
+                        <div className="flex items-center justify-between text-sm font-bold">
+                          <span>{prod.name}</span>
+                          <span className="text-[#1E4620]">
+                            {prod.unitsSold} un. ({pct}%) •{" "}
+                            {formatBRL(prod.revenue)}
+                          </span>
+                        </div>
+                        <div className="w-full h-3 bg-[#E6DEC8] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-solar-gradient rounded-full transition-all duration-500"
+                            style={{ width: `${Math.max(8, pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Qual Tamanho Vende Mais (M, G, GG, XGG) */}
+              <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+                <div>
+                  <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
+                    <Ruler className="w-5 h-5 text-[#1E4620]" />
+                    Qual Tamanho Vende Mais? (M, G, GG, XGG)
+                  </h2>
+                  <p className="text-xs text-[#7A6252]">
+                    Ajuda a planejar o corte de tecido Tactel na fábrica
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  {rankings.sizes.map((sz) => {
+                    const pct =
+                      kpis.totalUnitsSold > 0
+                        ? Math.round((sz.unitsSold / kpis.totalUnitsSold) * 100)
+                        : 0;
+                    return (
+                      <div key={sz.size} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-[#2C1E18]">{sz.label}</span>
+                          <span className="text-[#5C4438]">
+                            <strong>{sz.unitsSold} redes</strong> ({pct}%) •{" "}
+                            {formatBRL(sz.revenue)}
+                          </span>
+                        </div>
+                        <div className="w-full h-2.5 bg-[#EFE8D8] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#1E4620] rounded-full"
+                            style={{ width: `${Math.max(5, pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* LINHA 3: RANKING DAS 10 CORES CAMPEÃS + PARA ONDE ESTAMOS VENDENDO MAIS */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Ranking de Cores (7 colunas) */}
+              <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
+                      <Palette className="w-5 h-5 text-[#D95D39]" />
+                      Ranking: Quais Cores de Tactel Vendem Mais?
+                    </h2>
+                    <p className="text-xs text-[#7A6252]">
+                      Vendas acumuladas por cor vs. estoque atual disponível
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("inventory")}
+                    className="text-xs font-bold text-[#D95D39] hover:underline cursor-pointer"
+                  >
+                    Gerenciar Estoque →
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {rankings.colors.map((c, idx) => {
+                    const maxColorUnits = Math.max(
+                      1,
+                      rankings.colors[0]?.unitsSold || 1
+                    );
+                    const barWidth = Math.max(
+                      6,
+                      Math.round((c.unitsSold / maxColorUnits) * 100)
+                    );
+                    return (
+                      <div
+                        key={c.colorId}
+                        className="p-2.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center gap-3"
+                      >
+                        <span className="w-6 text-xs font-black text-[#7A6252] text-center">
+                          #{idx + 1}
+                        </span>
+                        <span
+                          className="w-7 h-7 rounded-full shrink-0 border border-black/20 shadow-xs tactel-swatch-sheen"
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="truncate text-[#2C1E18]">
+                              {c.colorName}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#1E4620] font-black">
+                                {c.unitsSold} vendidas
+                              </span>
+                              <span className="text-[11px] text-[#7A6252]">
+                                ({formatBRL(c.revenue)})
+                              </span>
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                  c.currentStock === 0
+                                    ? "bg-red-100 text-red-700"
+                                    : c.currentStock <= 6
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-[#E9F3E8] text-[#1E4620]"
+                                }`}
+                              >
+                                Estoque: {c.currentStock}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-full h-2 bg-[#E6DEC8] rounded-full overflow-hidden mt-1.5">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${barWidth}%`,
+                                backgroundColor: c.hex,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Para Onde Estamos Vendendo Mais - Estados e Cidades (5 colunas) */}
+              <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+                <div>
+                  <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-[#1E4620]" />
+                    Para Onde Vendemos Mais? (UF)
+                  </h2>
+                  <p className="text-xs text-[#7A6252]">
+                    Destinos campeões de pedidos expedidos de Tabuleiro do
+                    Norte/CE
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {rankings.states.map((st, idx) => (
+                    <div
+                      key={st.uf}
+                      className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-8 h-8 rounded-xl bg-[#2C1E18] text-amber-300 font-black text-xs flex items-center justify-center">
+                            {st.uf}
+                          </span>
+                          <div>
+                            <span className="text-sm font-bold text-[#2C1E18] block">
+                              {idx + 1}º Lugar • Estado: {st.uf}
+                            </span>
+                            <span className="text-[11px] text-[#7A6252]">
+                              Cidades:{" "}
+                              {st.cities
+                                .map((c) => `${c.city} (${c.count})`)
+                                .join(", ")}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-black text-[#1E4620] block">
+                            {formatBRL(st.revenue)}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#5C4438]">
+                            {st.ordersCount} pedido(s) • {st.unitsSold} rede(s)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================================
+            ABA 2: GESTÃO DE PEDIDOS, ENTREGAS, RASTREIO E ETIQUETA CORREIOS
+           ==================================================================== */}
+        {activeTab === "orders" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E6DEC8] shadow-warm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { id: "all", label: "Todos os Pedidos" },
+                  { id: "to_ship", label: "📦 Para Enviar (Pagos)" },
+                  { id: "pending_pix", label: "⏳ Aguardando PIX" },
+                  { id: "shipped", label: "🚚 Em Trânsito" },
+                  { id: "delivered", label: "✅ Entregues" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setOrderFilter(f.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                      orderFilter === f.id
+                        ? "bg-[#2C1E18] text-white"
+                        : "bg-[#FAF6F0] text-[#5C4438] hover:bg-[#EFE8D8]"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-[#7A6252] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar cliente, #ADA ou cidade..."
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] text-xs font-semibold text-[#2C1E18] focus:outline-none focus:border-[#D95D39]"
+                />
+              </div>
+            </div>
+
+            {/* LISTA DE PEDIDOS */}
+            <div className="space-y-4">
+              {filteredOrders.map((ord) => {
+                const cleanPhone = ord.customerPhone.replace(/\D/g, "");
+                const whatsMsg = ord.trackingCode
+                  ? `Olá ${ord.customerName.split(" ")[0]}! 🌞 Seu pedido *#${ord.orderReference}* da *Redes Adamari* já foi despachado de Tabuleiro do Norte/CE! Seu código de rastreio é: *${ord.trackingCode}*`
+                  : ord.paymentStatus === "pending"
+                    ? `Olá ${ord.customerName.split(" ")[0]}, tudo bem? Aqui é do Ateliê Redes Adamari! Vimos seu pedido *#${ord.orderReference}* e sua rede já está separada. Posso te ajudar a concluir o pagamento via PIX?`
+                    : `Olá ${ord.customerName.split(" ")[0]}! Seu pedido *#${ord.orderReference}* da Redes Adamari foi confirmado e já está em separação no nosso ateliê!`;
+
+                return (
+                  <div
+                    key={ord.id}
+                    className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E6DEC8] shadow-warm space-y-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EFE8D8]">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-black text-sm bg-[#2C1E18] text-amber-300 px-3 py-1 rounded-xl">
+                          #{ord.orderReference}
+                        </span>
+                        <div>
+                          <h3 className="font-bold text-base text-[#2C1E18]">
+                            {ord.customerName}
+                          </h3>
+                          <span className="text-xs text-[#7A6252]">
+                            {new Date(ord.createdAt).toLocaleString("pt-BR")} •{" "}
+                            {ord.city}/{ord.uf} • Pagamento:{" "}
+                            <strong className="uppercase">
+                              {ord.paymentMethod}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                            ord.paymentStatus === "approved"
+                              ? "bg-[#E9F3E8] text-[#1E4620]"
+                              : ord.paymentStatus === "pending"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {ord.paymentStatus === "approved"
+                            ? "✓ Pagamento Aprovado"
+                            : ord.paymentStatus === "pending"
+                              ? "⏳ Aguardando PIX"
+                              : "✕ Cancelado (Estoque Estornado)"}
+                        </span>
+
+                        <span className="text-lg font-black text-[#1E4620]">
+                          {formatBRL(ord.totalAmount)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ITENS DO PEDIDO E ENDEREÇO */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                      <div className="lg:col-span-6 space-y-2">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221]">
+                          Redes para Separar e Embalar:
+                        </span>
+                        {ord.items.map((item) => {
+                          const colorObj = TACTEL_COLORS.find(
+                            (c) => c.id === item.colorId
+                          );
+                          return (
+                            <div
+                              key={item.id}
+                              className="p-2.5 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-between text-xs"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-4 h-4 rounded-full border border-black/20 shrink-0"
+                                  style={{
+                                    backgroundColor: colorObj?.hex || "#1E56A0",
+                                  }}
+                                />
+                                <div>
+                                  <strong className="text-[#2C1E18]">
+                                    {item.quantity}x {item.productName} (Tam.{" "}
+                                    {item.size})
+                                  </strong>
+                                  <span className="block text-[#5C4438]">
+                                    Cor: <strong>{item.colorName}</strong> •
+                                    SKU: <code>{item.sku}</code>
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="font-bold text-[#1E4620]">
+                                {formatBRL(item.totalPrice)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="lg:col-span-6 p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] text-xs space-y-1">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221] block">
+                          Endereço de Destino:
+                        </span>
+                        <p className="font-bold text-[#2C1E18]">
+                          {ord.shippingAddress.street},{" "}
+                          {ord.shippingAddress.number}{" "}
+                          {ord.shippingAddress.complement
+                            ? `(${ord.shippingAddress.complement})`
+                            : ""}
+                        </p>
+                        <p className="text-[#5C4438]">
+                          Bairro: {ord.shippingAddress.neighborhood} •{" "}
+                          <strong>
+                            {ord.city} / {ord.uf}
+                          </strong>
+                        </p>
+                        <p className="font-mono font-bold text-[#2C1E18]">
+                          CEP: {ord.shippingAddress.cep} • CPF:{" "}
+                          {ord.customerCpf || "Não informado"}
+                        </p>
+                        <p className="text-[#5C4438]">
+                          WhatsApp: {ord.customerPhone} • E-mail:{" "}
+                          {ord.customerEmail || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* CONTROLES DE LOGÍSTICA, RASTREIO E ETIQUETA */}
+                    <div className="pt-3 border-t border-[#EFE8D8] flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={ord.paymentStatus}
+                          disabled={savingOrderId === ord.id}
+                          onChange={(e) =>
+                            handleUpdateOrder(ord.id, {
+                              paymentStatus: e.target.value as PaymentStatus,
+                            })
+                          }
+                          className="rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                        >
+                          <option value="pending">Pgto: Pendente</option>
+                          <option value="approved">Pgto: Aprovado</option>
+                          <option value="cancelled">
+                            Pgto: Cancelado (Estornar Estoque)
+                          </option>
+                        </select>
+
+                        <select
+                          value={ord.fulfillmentStatus}
+                          disabled={savingOrderId === ord.id}
+                          onChange={(e) =>
+                            handleUpdateOrder(ord.id, {
+                              fulfillmentStatus: e.target
+                                .value as FulfillmentStatus,
+                            })
+                          }
+                          className="rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-bold text-[#2C1E18]"
+                        >
+                          <option value="aguardando_pagamento">
+                            Entrega: Aguardando Pagamento
+                          </option>
+                          <option value="separando">
+                            Entrega: Em Separação no Ateliê
+                          </option>
+                          <option value="enviado">
+                            Entrega: Enviado (Em Trânsito)
+                          </option>
+                          <option value="entregue">
+                            Entrega: Entregue ao Cliente
+                          </option>
+                          <option value="cancelado">
+                            Entrega: Cancelado (Devolve ao Estoque)
+                          </option>
+                        </select>
+
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="Cód. Rastreio (ex: AA123456789BR)"
+                            value={trackingInputs[ord.id] || ""}
+                            onChange={(e) =>
+                              setTrackingInputs((prev) => ({
+                                ...prev,
+                                [ord.id]: e.target.value,
+                              }))
+                            }
+                            className="w-48 rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-mono font-bold uppercase text-[#2C1E18]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateOrder(ord.id, {
+                                trackingCode: trackingInputs[ord.id] || "",
+                              })
+                            }
+                            className="px-3 py-2 rounded-xl bg-[#2C1E18] text-white text-xs font-bold hover:bg-[#3D2B22] cursor-pointer"
+                          >
+                            Salvar Rastreio
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setLabelOrder(ord)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F5E6D3] hover:bg-[#EBD5B8] text-[#9C5221] text-xs font-extrabold transition cursor-pointer"
+                        >
+                          <Printer className="w-4 h-4" /> Imprimir Etiqueta
+                        </button>
+
+                        <a
+                          href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                            whatsMsg
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1E4620] hover:bg-[#163617] text-white text-xs font-extrabold transition"
+                        >
+                          <MessageCircle className="w-4 h-4" /> Avisar no
+                          WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================================
+            ABA 3: CONTROLE DE ESTOQUE (MATRIZ 10 CORES × 4 TAMANHOS)
+           ==================================================================== */}
+        {activeTab === "inventory" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#EFE8D8] pb-5">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#1E4620] bg-[#E9F3E8] px-3 py-1 rounded-full">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Proteção Anti-Venda
+                    Sem Estoque Ativa
+                  </span>
+                  <h2 className="font-serif-editorial text-2xl font-bold text-[#2C1E18] mt-2">
+                    Grade de Estoque por Modelo, Cor e Tamanho
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#5C4438]">
+                    Defina quantas redes você tem prontas em cada cor e tamanho.
+                    Qualquer variação com{" "}
+                    <strong className="text-red-700">estoque 0</strong> fica
+                    automaticamente bloqueada como <strong>Esgotada</strong> na
+                    loja!
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Seletor do Modelo */}
+                  {(
+                    [
+                      "rede-tradicional",
+                      "rede-mosquiteiro",
+                    ] as ProductId[]
+                  ).map((pid) => (
+                    <button
+                      key={pid}
+                      type="button"
+                      onClick={() => setStockProductFilter(pid)}
+                      className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold border-2 transition cursor-pointer ${
+                        stockProductFilter === pid
+                          ? "border-[#D95D39] bg-[#2C1E18] text-white shadow-sm"
+                          : "border-[#E6DEC8] bg-[#FAF6F0] text-[#5C4438]"
+                      }`}
+                    >
+                      {PRODUCTS[pid].name}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    disabled={savingStock}
+                    onClick={() => handleSaveStockChanges()}
+                    className="px-5 py-2.5 rounded-2xl bg-solar-gradient text-white text-xs font-extrabold shadow-md cursor-pointer"
+                  >
+                    {savingStock
+                      ? "Salvando Estoque..."
+                      : "Salvar Todas as Quantidades"}
+                  </button>
+                </div>
+              </div>
+
+              {stockSavedFeedback && (
+                <div className="p-3.5 rounded-2xl bg-[#E9F3E8] border border-[#C6E2C3] text-xs font-extrabold text-[#1E4620] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {stockSavedFeedback}
+                </div>
+              )}
+
+              {/* TABELA MATRIZ: 10 CORES NAS LINHAS x 4 TAMANHOS NAS COLUNAS */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-[#E6DEC8] text-xs uppercase tracking-wider text-[#7A6252]">
+                      <th className="py-3 px-3">Cor do Tactel</th>
+                      {SIZE_ORDER.map((sz) => (
+                        <th key={sz} className="py-3 px-3 text-center">
+                          Tamanho {sz}
+                        </th>
+                      ))}
+                      <th className="py-3 px-3 text-center">Total da Cor</th>
+                      <th className="py-3 px-3 text-right">Ação Rápida</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE8D8] text-sm">
+                    {TACTEL_COLORS.map((color) => {
+                      let rowTotal = 0;
+                      for (const sz of SIZE_ORDER) {
+                        const sku = `${stockProductFilter}-${sz}-${color.id}`;
+                        rowTotal += editedStock[sku] ?? 0;
+                      }
+
+                      return (
+                        <tr
+                          key={color.id}
+                          className="hover:bg-[#FAF6F0]/70 transition"
+                        >
+                          <td className="py-3.5 px-3">
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className="w-7 h-7 rounded-full border border-black/20 shrink-0 shadow-xs tactel-swatch-sheen"
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              <div>
+                                <span className="font-bold text-[#2C1E18] block">
+                                  {color.name}
+                                </span>
+                                <span className="text-[11px] text-[#7A6252]">
+                                  {color.profile}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {SIZE_ORDER.map((sz) => {
+                            const sku = `${stockProductFilter}-${sz}-${color.id}`;
+                            const qty = editedStock[sku] ?? 0;
+                            const isZero = qty === 0;
+                            const isLow = qty > 0 && qty <= 3;
+
+                            return (
+                              <td key={sz} className="py-3 px-2 text-center">
+                                <div
+                                  className={`inline-flex flex-col items-center p-2 rounded-2xl border ${
+                                    isZero
+                                      ? "bg-red-50 border-red-200"
+                                      : isLow
+                                        ? "bg-amber-50 border-amber-200"
+                                        : "bg-[#FAF6F0] border-[#E6DEC8]"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleAdjustLocalSku(sku, qty - 1)
+                                      }
+                                      className="w-6 h-6 rounded-lg bg-white border border-[#D4C5A9] flex items-center justify-center text-[#2C1E18] hover:bg-[#F3ECE0] cursor-pointer"
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={qty}
+                                      onChange={(e) =>
+                                        handleAdjustLocalSku(
+                                          sku,
+                                          Number(e.target.value)
+                                        )
+                                      }
+                                      className="w-12 text-center font-black text-sm text-[#2C1E18] bg-transparent focus:outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleAdjustLocalSku(sku, qty + 1)
+                                      }
+                                      className="w-6 h-6 rounded-lg bg-white border border-[#D4C5A9] flex items-center justify-center text-[#2C1E18] hover:bg-[#F3ECE0] cursor-pointer"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <span
+                                    className={`text-[9px] font-extrabold uppercase mt-1 ${
+                                      isZero
+                                        ? "text-red-700"
+                                        : isLow
+                                          ? "text-amber-800"
+                                          : "text-[#1E4620]"
+                                    }`}
+                                  >
+                                    {isZero
+                                      ? "Esgotado"
+                                      : isLow
+                                        ? "Estoque Baixo"
+                                        : "Disponível"}
+                                  </span>
+                                </div>
+                              </td>
+                            );
+                          })}
+
+                          <td className="py-3 px-3 text-center">
+                            <span className="font-black text-base text-[#2C1E18]">
+                              {rowTotal} un.
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-right space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSetRowColorStock(
+                                  stockProductFilter,
+                                  color.id,
+                                  10
+                                )
+                              }
+                              className="px-2.5 py-1.5 rounded-xl bg-[#E9F3E8] text-[#1E4620] text-[11px] font-bold hover:opacity-85 cursor-pointer"
+                            >
+                              Definir 10 un.
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSetRowColorStock(
+                                  stockProductFilter,
+                                  color.id,
+                                  0
+                                )
+                              }
+                              className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-700 text-[11px] font-bold hover:bg-red-100 cursor-pointer"
+                            >
+                              Zerar Cor
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================================
+            ABA 4: CENTRAL DE E-MAIL MARKETING & WHATSAPP MARKETING
+           ==================================================================== */}
+        {activeTab === "marketing" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Disparador de E-mail Marketing (7 colunas) */}
+            <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
+              <div className="flex items-center justify-between border-b border-[#EFE8D8] pb-4">
+                <div>
+                  <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-[#D95D39]" />
+                    Disparador de E-mail Marketing (Resend)
+                  </h2>
+                  <p className="text-xs text-[#7A6252]">
+                    Envie campanhas com a identidade visual do Ateliê Adamari
+                  </p>
+                </div>
+                <span className="text-xs font-extrabold bg-[#E9F3E8] text-[#1E4620] px-3 py-1 rounded-full">
+                  {filteredCustomers.length} destinatários
+                </span>
+              </div>
+
+              {/* Botões de Templates Prontos */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-bold text-[#5C4438]">
+                  Carregar Modelo Pronto:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyEmailTemplate("launch")}
+                    className="px-3 py-1.5 rounded-xl bg-[#FAF6F0] border border-[#D4C5A9] text-xs font-bold text-[#2C1E18] hover:border-[#D95D39] cursor-pointer"
+                  >
+                    🎨 Lote Novo / Cores
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyEmailTemplate("pix_recovery")}
+                    className="px-3 py-1.5 rounded-xl bg-[#FAF6F0] border border-[#D4C5A9] text-xs font-bold text-[#2C1E18] hover:border-[#D95D39] cursor-pointer"
+                  >
+                    ⏳ Recuperação de PIX
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyEmailTemplate("shipping")}
+                    className="px-3 py-1.5 rounded-xl bg-[#FAF6F0] border border-[#D4C5A9] text-xs font-bold text-[#2C1E18] hover:border-[#D95D39] cursor-pointer"
+                  >
+                    🚚 Promoção Frete Grátis
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSendEmailCampaign} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    Segmento de Clientes:
+                  </label>
+                  <select
+                    value={mktSegment}
+                    onChange={(e) =>
+                      setMktSegment(
+                        e.target.value as "all" | "pending_pix" | "approved"
+                      )
+                    }
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2.5 text-xs font-bold text-[#2C1E18]"
+                  >
+                    <option value="all">
+                      Todos os Clientes Cadastrados (
+                      {data?.customers.length || 0})
+                    </option>
+                    <option value="pending_pix">
+                      Apenas Clientes com PIX Pendente (Recuperação de Venda)
+                    </option>
+                    <option value="approved">
+                      Apenas Clientes que Já Compraram (Recompra / Fidelização)
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    Assunto do E-mail:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    Título Interno (Headline):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emailHeadline}
+                    onChange={(e) => setEmailHeadline(e.target.value)}
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                    Mensagem (Use <code>{"{nome}"}</code> para personalizar):
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] p-3 text-xs text-[#2C1E18] leading-relaxed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                      Cupom de Destaque (Opcional):
+                    </label>
+                    <input
+                      type="text"
+                      value={emailCoupon}
+                      onChange={(e) => setEmailCoupon(e.target.value)}
+                      className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold uppercase text-[#D95D39]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                      Texto do Botão:
+                    </label>
+                    <input
+                      type="text"
+                      value={emailCtaText}
+                      onChange={(e) => setEmailCtaText(e.target.value)}
+                      className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2 text-xs font-bold text-[#2C1E18]"
+                    />
+                  </div>
+                </div>
+
+                {emailResultNotice && (
+                  <div className="p-3.5 rounded-2xl bg-[#E9F3E8] border border-[#C6E2C3] text-xs font-bold text-[#1E4620]">
+                    {emailResultNotice}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={sendingEmail}
+                  className="w-full py-3.5 rounded-2xl bg-solar-gradient text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  {sendingEmail
+                    ? "Disparando E-mails..."
+                    : `Disparar E-mail para ${filteredCustomers.length} Cliente(s)`}
+                </button>
+              </form>
+            </div>
+
+            {/* Central de WhatsApp Marketing (5 colunas) */}
+            <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-4">
+              <div>
+                <h2 className="font-serif-editorial text-xl font-bold text-[#2C1E18] flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-[#1E4620]" />
+                  Campanha Rápida de WhatsApp
+                </h2>
+                <p className="text-xs text-[#7A6252]">
+                  Envie mensagens personalizadas com 1 clique para cada cliente
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#2C1E18] mb-1">
+                  Texto da Mensagem de WhatsApp (com <code>{"{nome}"}</code>):
+                </label>
+                <textarea
+                  rows={3}
+                  value={whatsappTemplate}
+                  onChange={(e) => setWhatsappTemplate(e.target.value)}
+                  className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] p-3 text-xs text-[#2C1E18]"
+                />
+              </div>
+
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {filteredCustomers.map((cust) => {
+                  const firstName = cust.name.split(" ")[0] || "Cliente";
+                  const personalizedMsg = whatsappTemplate.replace(
+                    /\{nome\}/gi,
+                    firstName
+                  );
+                  const cleanPhone = cust.phone.replace(/\D/g, "");
+
+                  return (
+                    <div
+                      key={cust.id}
+                      className="p-3 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-between gap-2 text-xs"
+                    >
+                      <div>
+                        <strong className="text-[#2C1E18] block">
+                          {cust.name}
+                        </strong>
+                        <span className="text-[11px] text-[#7A6252]">
+                          {cust.city}/{cust.uf} • {cust.phone}
+                        </span>
+                      </div>
+
+                      <a
+                        href={`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
+                          personalizedMsg
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1E4620] text-white font-extrabold hover:bg-[#163617] shrink-0"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" /> Enviar
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================================
+            ABA 5: ESTÚDIO CRIATIVO DE REDES SOCIAIS COM GEMINI NANO BANANA
+           ==================================================================== */}
+        {activeTab === "social_studio" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Painel de Configuração do Post IA (5 colunas) */}
+            <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
+              <div>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#9C5221] bg-[#F5E6D3] px-3 py-1 rounded-full">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D95D39]" /> Gemini
+                  Nano Banana 2.1 Oficial
+                </span>
+                <h2 className="font-serif-editorial text-2xl font-bold text-[#2C1E18] mt-2">
+                  Estúdio de Posts & Stories IA
+                </h2>
+                <p className="text-xs text-[#5C4438] mt-1">
+                  Gera fotos publicitárias usando a foto real da sua rede como
+                  referência (preservando o Tactel, bolsinho e cordas brancas
+                  2,5mm) + 3 legendas prontas!
+                </p>
+              </div>
+
+              <form onSubmit={handleGenerateStudioPost} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1.5">
+                    1. Qual Rede Você Quer Divulgar?
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        "rede-tradicional",
+                        "rede-mosquiteiro",
+                      ] as ProductId[]
+                    ).map((pid) => (
+                      <button
+                        key={pid}
+                        type="button"
+                        onClick={() => setStudioProduct(pid)}
+                        className={`p-3 rounded-2xl border-2 text-left text-xs font-extrabold transition cursor-pointer ${
+                          studioProduct === pid
+                            ? "border-[#D95D39] bg-[#FDF8F2] text-[#2C1E18]"
+                            : "border-[#E6DEC8] bg-[#FAF6F0] text-[#5C4438]"
+                        }`}
+                      >
+                        {PRODUCTS[pid].shortName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1.5">
+                    2. Cor do Tecido Tactel:
+                  </label>
+                  <select
+                    value={studioColorId}
+                    onChange={(e) => setStudioColorId(e.target.value)}
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3.5 py-2.5 text-xs font-bold text-[#2C1E18]"
+                  >
+                    {TACTEL_COLORS.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.profile})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1.5">
+                    3. Formato para Rede Social:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "1:1", label: "Feed (1:1)" },
+                      { id: "9:16", label: "Stories/Reels (9:16)" },
+                      { id: "16:9", label: "Banner (16:9)" },
+                    ].map((fmt) => (
+                      <button
+                        key={fmt.id}
+                        type="button"
+                        onClick={() =>
+                          setStudioAspectRatio(
+                            fmt.id as "1:1" | "9:16" | "16:9"
+                          )
+                        }
+                        className={`py-2.5 px-2 rounded-xl border text-xs font-extrabold transition cursor-pointer ${
+                          studioAspectRatio === fmt.id
+                            ? "border-[#2C1E18] bg-[#2C1E18] text-white"
+                            : "border-[#E6DEC8] bg-[#FAF6F0] text-[#5C4438]"
+                        }`}
+                      >
+                        {fmt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#2C1E18] mb-1.5">
+                    4. Cenário Desejado (ou clique numa sugestão abaixo):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {[
+                      "Varanda de praia no Ceará com coqueiros e sol da tarde",
+                      "Jardim gramado entre duas árvores com livro e café",
+                      "Acampamento na serra ao entardecer com natureza ao redor",
+                      "Varanda gourmet de apartamento moderno e aconchegante",
+                    ].map((preset, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setStudioScene(preset)}
+                        className="text-[11px] bg-[#FAF6F0] hover:bg-[#EFE8D8] border border-[#D4C5A9] px-2.5 py-1 rounded-lg text-[#5C4438] font-semibold cursor-pointer"
+                      >
+                        + {preset.slice(0, 32)}...
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    rows={3}
+                    required
+                    value={studioScene}
+                    onChange={(e) => setStudioScene(e.target.value)}
+                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] p-3 text-xs text-[#2C1E18]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={studioLoading}
+                  className="w-full py-3.5 rounded-2xl bg-solar-gradient text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  {studioLoading
+                    ? "Gerando Imagem e Legendas no Gemini Nano Banana..."
+                    : "Gerar Foto + 3 Legendas com IA"}
+                </button>
+              </form>
+            </div>
+
+            {/* Resultado do Estúdio IA (7 colunas) */}
+            <div className="lg:col-span-7 space-y-6">
+              {studioResult ? (
+                <div className="bg-white rounded-3xl p-6 border border-[#E6DEC8] shadow-warm space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-extrabold text-[#1E4620] bg-[#E9F3E8] px-3 py-1 rounded-full">
+                        ✓ Criativo Pronto para Postar
+                      </span>
+                      <p className="text-[11px] text-[#7A6252] mt-1">
+                        Modelo: {studioResult.modelUsed}
+                      </p>
+                    </div>
+                    <a
+                      href={studioResult.imageUrl}
+                      download={`post-redes-adamari-${studioColorId}.jpg`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2C1E18] text-white text-xs font-extrabold"
+                    >
+                      <Download className="w-4 h-4" /> Baixar Imagem
+                    </a>
+                  </div>
+
+                  {studioResult.notice && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-semibold">
+                      {studioResult.notice}
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl overflow-hidden border border-[#E6DEC8] bg-[#FAF6F0] max-h-[460px] flex items-center justify-center">
+                    <img
+                      src={studioResult.imageUrl}
+                      alt="Post Gerado Gemini Nano Banana"
+                      className="w-full h-full object-contain max-h-[440px]"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="font-serif-editorial text-lg font-bold text-[#2C1E18]">
+                      3 Sugestões de Legendas Prontas (Instagram, Facebook e
+                      WhatsApp):
+                    </h3>
+                    {studioResult.captions.map((cap, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-[#9C5221]">
+                            Opção de Legenda #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(cap);
+                              setCopiedCaptionIdx(idx);
+                              setTimeout(() => setCopiedCaptionIdx(null), 2000);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-white border border-[#D4C5A9] text-xs font-bold text-[#2C1E18] cursor-pointer"
+                          >
+                            {copiedCaptionIdx === idx ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-[#1E4620]" />{" "}
+                                Copiada!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" /> Copiar Legenda
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-[#2C1E18] whitespace-pre-line leading-relaxed">
+                          {cap}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-3xl p-8 border border-[#E6DEC8] shadow-warm text-center space-y-3">
+                  <Sparkles className="w-10 h-10 text-[#D95D39] mx-auto" />
+                  <h3 className="font-serif-editorial text-xl font-bold text-[#2C1E18]">
+                    Pronto para Criar Seu Post!
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5C4438] max-w-md mx-auto">
+                    Selecione ao lado o modelo da rede, a cor do Tactel e o
+                    cenário desejado. O <strong>Gemini Nano Banana</strong>{" "}
+                    criará a arte visual e 3 legendas de alta conversão!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ======================================================================
+          MODAL DE IMPRESSÃO DE ETIQUETA DE ENVIO (CORREIOS / TRANSPORTADORA)
+         ====================================================================== */}
+      {labelOrder && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b pb-3 print:hidden">
+              <h3 className="font-serif-editorial text-lg font-bold text-[#2C1E18]">
+                Etiqueta de Expedição #{labelOrder.orderReference}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setLabelOrder(null)}
+                className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Área Formatada da Etiqueta */}
+            <div className="border-2 border-black p-5 rounded-xl space-y-4 text-black bg-white">
+              <div className="flex items-center justify-between border-b-2 border-black pb-3">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest block">
+                    EXPEDIÇÃO E-COMMERCE BRASIL
+                  </span>
+                  <strong className="text-lg font-black">
+                    REDES ADAMARI (ATELIÊ ADAMARI)
+                  </strong>
+                </div>
+                <div className="text-right font-mono text-xs font-bold">
+                  PEDIDO: #{labelOrder.orderReference}
+                  <br />
+                  {labelOrder.trackingCode || "ENVIO IMEDIATO"}
+                </div>
+              </div>
+
+              <div className="bg-gray-100 p-3.5 rounded-lg border border-black space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-black text-white px-2 py-0.5 rounded">
+                  DESTINATÁRIO
+                </span>
+                <p className="text-base font-black mt-1">
+                  {labelOrder.customerName}
+                </p>
+                <p className="text-sm font-bold">
+                  {labelOrder.shippingAddress.street},{" "}
+                  {labelOrder.shippingAddress.number}{" "}
+                  {labelOrder.shippingAddress.complement
+                    ? `- ${labelOrder.shippingAddress.complement}`
+                    : ""}
+                </p>
+                <p className="text-sm">
+                  Bairro: {labelOrder.shippingAddress.neighborhood}
+                </p>
+                <p className="text-base font-black">
+                  {labelOrder.city} / {labelOrder.uf}
+                </p>
+                <p className="text-xl font-mono font-black tracking-wider pt-1">
+                  CEP: {labelOrder.shippingAddress.cep}
+                </p>
+                <p className="text-xs">Tel/WhatsApp: {labelOrder.customerPhone}</p>
+              </div>
+
+              <div className="text-xs border-t border-dashed border-black pt-3 space-y-1">
+                <strong className="uppercase block">
+                  REMETENTE: REDES ADAMARI CONFECÇÕES LTDA.
+                </strong>
+                <p>CNPJ: 52.148.963/0001-45 • Polo Industrial Artesanal</p>
+                <p>Tabuleiro do Norte – Ceará • CEP: 62960-000</p>
+              </div>
+
+              <div className="text-xs border-t border-black pt-3">
+                <strong className="uppercase block mb-1">
+                  CONFERÊNCIA DE CONTEÚDO DO PACOTE:
+                </strong>
+                {labelOrder.items.map((it) => (
+                  <div key={it.id} className="flex justify-between font-bold">
+                    <span>
+                      [ ] {it.quantity}x {it.productName} (Tam. {it.size}) — Cor:{" "}
+                      {it.colorName}
+                    </span>
+                    <span>{formatBRL(it.totalPrice)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 print:hidden">
+              <button
+                type="button"
+                onClick={() => setLabelOrder(null)}
+                className="px-4 py-2.5 rounded-xl border border-[#D4C5A9] text-xs font-bold text-[#5C4438] cursor-pointer"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2C1E18] text-white text-xs font-extrabold cursor-pointer"
+              >
+                <Printer className="w-4 h-4" /> Imprimir Etiqueta Agora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

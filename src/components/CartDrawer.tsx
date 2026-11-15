@@ -44,6 +44,9 @@ export function CartDrawer() {
     paymentMethod,
     address,
     customer,
+    stockMap,
+    stockLoaded,
+    fetchStock,
     closeDrawer,
     setPaymentMethod,
     updateQuantity,
@@ -72,7 +75,7 @@ export function CartDrawer() {
     subtotalPix,
     activeSubtotal,
     pixSavings,
-  } = resolveCartDetails(items, paymentMethod);
+  } = resolveCartDetails(items, paymentMethod, stockMap, stockLoaded);
 
   const missingForFreeShipping = Math.max(
     0,
@@ -160,8 +163,11 @@ export function CartDrawer() {
 
       const data = await response.json();
       if (!response.ok) {
+        await fetchStock();
         throw new Error(data.error || "Erro ao iniciar o pagamento.");
       }
+
+      await fetchStock();
 
       if (data.mode === "mercadopago_live" && data.checkoutUrl) {
         clearCart();
@@ -377,10 +383,20 @@ export function CartDrawer() {
                           </span>
                           <button
                             type="button"
+                            disabled={item.quantity >= item.availableStock}
                             onClick={() =>
-                              updateQuantity(item.cartItemId, item.quantity + 1)
+                              updateQuantity(
+                                item.cartItemId,
+                                item.quantity + 1,
+                                item.availableStock
+                              )
                             }
-                            className="w-7 h-7 flex items-center justify-center text-[#2C1E18] hover:bg-white rounded-r-xl cursor-pointer"
+                            title={
+                              item.quantity >= item.availableStock
+                                ? `Estoque máximo atingido (${item.availableStock} un.)`
+                                : "Aumentar quantidade"
+                            }
+                            className="w-7 h-7 flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-35 rounded-r-xl cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
@@ -391,9 +407,11 @@ export function CartDrawer() {
                             {formatBRL(item.lineTotal)}
                           </span>
                           <span className="block text-[10px] text-[#7A6252]">
-                            {paymentMethod === "pix"
-                              ? "no PIX c/ desconto"
-                              : "no Cartão"}
+                            {item.quantity >= item.availableStock
+                              ? `Máx. estoque (${item.availableStock} un.)`
+                              : paymentMethod === "pix"
+                                ? "no PIX c/ desconto"
+                                : "no Cartão"}
                           </span>
                         </div>
                       </div>

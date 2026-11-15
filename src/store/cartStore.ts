@@ -41,16 +41,26 @@ interface CartStoreState {
   paymentMethod: "pix" | "card";
   address: ShippingAddress;
   customer: CustomerData;
+  /** Mapa de estoque em tempo real: sku (productId-size-colorId) -> quantidade */
+  stockMap: Record<string, number>;
+  stockLoaded: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
   setPaymentMethod: (method: "pix" | "card") => void;
+  setStockMap: (map: Record<string, number>) => void;
+  fetchStock: () => Promise<void>;
   addItem: (
     productId: ProductId,
     size: SizeCode,
     colorId: string,
-    quantity?: number
+    quantity?: number,
+    maxStock?: number
   ) => void;
-  updateQuantity: (cartItemId: string, quantity: number) => void;
+  updateQuantity: (
+    cartItemId: string,
+    quantity: number,
+    maxStock?: number
+  ) => void;
   removeItem: (cartItemId: string) => void;
   clearCart: () => void;
   setAddress: (partial: Partial<ShippingAddress>) => void;
@@ -65,12 +75,22 @@ export function getCartItemKey(
   return `${productId}__${size}__${colorId}`;
 }
 
+export function getSkuKey(
+  productId: ProductId,
+  size: SizeCode,
+  colorId: string
+): string {
+  return `${productId}-${size}-${colorId}`;
+}
+
 export const useCartStore = create<CartStoreState>()(
   persist(
     (set, get) => ({
       items: [],
       isDrawerOpen: false,
       paymentMethod: "pix",
+      stockMap: {},
+      stockLoaded: false,
       address: {
         cep: "",
         street: "",
@@ -90,31 +110,58 @@ export const useCartStore = create<CartStoreState>()(
       openDrawer: () => set({ isDrawerOpen: true }),
       closeDrawer: () => set({ isDrawerOpen: false }),
       setPaymentMethod: (method) => set({ paymentMethod: method }),
+      setStockMap: (map) => set({ stockMap: map, stockLoaded: true }),
 
-      addItem: (productId, size, colorId, quantity = 1) => {
+      fetchStock: async () => {
+        try {
+          const res = await fetch("/api/inventory", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.stockMap) {
+              set({ stockMap: data.stockMap, stockLoaded: true });
+            }
+          }
+        } catch {
+          // Mantém estado anterior em caso de falha de rede
+        }
+      },
+
+      addItem: (productId, size, colorId, quantity = 1, maxStock) => {
+        const sku = getSkuKey(productId, size, colorId);
+        const liveLimit =
+          typeof maxStock === "number"
+            ? maxStock
+            : get().stockLoaded
+              ? (get().stockMap[sku] ?? 10)
+              : 50;
+
+        if (liveLimit <= 0) {
+          return;
+        }
+
         const cartItemId = getCartItemKey(productId, size, colorId);
         const existing = get().items.find((i) => i.cartItemId === cartItemId);
         if (existing) {
+          const nextQty = Math.min(liveLimit, existing.quantity + quantity);
           set({
             items: get().items.map((i) =>
-              i.cartItemId === cartItemId
-                ? { ...i, quantity: i.quantity + quantity }
-                : i
+              i.cartItemId === cartItemId ? { ...i, quantity: nextQty } : i
             ),
             isDrawerOpen: true,
           });
         } else {
+          const nextQty = Math.min(liveLimit, quantity);
           set({
             items: [
               ...get().items,
-              { cartItemId, productId, size, colorId, quantity },
+              { cartItemId, productId, size, colorId, quantity: nextQty },
             ],
             isDrawerOpen: true,
           });
         }
       },
 
-      updateQuantity: (cartItemId, quantity) => {
+      updateQuantity: (cartItemId, quantity, maxStock) => {
         if (quantity <= 0) {
           set({
             items: get().items.filter((i) => i.cartItemId !== cartItemId),
@@ -122,9 +169,17 @@ export const useCartStore = create<CartStoreState>()(
           return;
         }
         set({
-          items: get().items.map((i) =>
-            i.cartItemId === cartItemId ? { ...i, quantity } : i
-          ),
+          items: get().items.map((i) => {
+            if (i.cartItemId !== cartItemId) return i;
+            const sku = getSkuKey(i.productId, i.size, i.colorId);
+            const limit =
+              typeof maxStock === "number"
+                ? maxStock
+                : get().stockLoaded
+                  ? (get().stockMap[sku] ?? 50)
+                  : 50;
+            return { ...i, quantity: Math.min(limit, quantity) };
+          }),
         });
       },
 
@@ -159,11 +214,13 @@ export const useCartStore = create<CartStoreState>()(
 );
 
 /**
- * Helper para enriquecer os itens da sacola com detalhes do produto estático
+ * Helper para enriquecer os itens da sacola com detalhes do produto estático + estoque
  */
 export function resolveCartDetails(
   items: CartItem[],
-  paymentMethod: "pix" | "card"
+  paymentMethod: "pix" | "card",
+  stockMap?: Record<string, number>,
+  stockLoaded?: boolean
 ) {
   let totalItemsCount = 0;
   let subtotalCard = 0;
@@ -178,6 +235,10 @@ export function resolveCartDetails(
       const color =
         TACTEL_COLORS.find((c) => c.id === item.colorId) || TACTEL_COLORS[0];
 
+      const sku = getSkuKey(item.productId, item.size, item.colorId);
+      const availableStock =
+        stockLoaded && stockMap ? (stockMap[sku] ?? 10) : 15;
+
       const unitPrice =
         paymentMethod === "pix" ? sizeSpec.pricePix : sizeSpec.priceCard;
       const lineTotal = unitPrice * item.quantity;
@@ -188,6 +249,8 @@ export function resolveCartDetails(
 
       return {
         ...item,
+        sku,
+        availableStock,
         product,
         sizeSpec,
         color,
@@ -209,4 +272,3 @@ export function resolveCartDetails(
     pixSavings,
   };
 }
-

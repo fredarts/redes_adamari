@@ -7,6 +7,10 @@ import {
   type ProductId,
   type SizeCode,
 } from "@/data/products";
+import {
+  recordNewOrder,
+  validateAndDeductStock,
+} from "@/lib/supabaseAdmin";
 
 interface CheckoutItemInput {
   productId: ProductId;
@@ -54,8 +58,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Validação Server-Side dos Preços (Direto do Catálogo Estático no Servidor)
+    // 1. Validação Server-Side dos Preços e Normalização de Quantidades
     let validatedSubtotal = 0;
+    const normalizedItems: Array<{
+      productId: ProductId;
+      productName: string;
+      size: SizeCode;
+      colorId: string;
+      colorName: string;
+      quantity: number;
+      unitPrice: number;
+    }> = [];
+
     const mpItems = items.map((rawItem) => {
       const product = PRODUCTS[rawItem.productId];
       if (!product) {
@@ -74,6 +88,16 @@ export async function POST(request: Request) {
 
       validatedSubtotal += unitPrice * qty;
 
+      normalizedItems.push({
+        productId: product.id,
+        productName: product.shortName,
+        size: sizeSpec.code,
+        colorId: color.id,
+        colorName: color.name,
+        quantity: qty,
+        unitPrice: Number(unitPrice.toFixed(2)),
+      });
+
       return {
         id: `${product.id}-${sizeSpec.code}-${color.id}`,
         title: `${product.shortName} (Tam. ${sizeSpec.code}) - Cor: ${color.name}`,
@@ -84,7 +108,30 @@ export async function POST(request: Request) {
       };
     });
 
-    // 2. Cálculo Server-Side do Frete
+    // 2. Validação e Baixa Automática de Estoque (Impede venda de cor/tamanho esgotado!)
+    const stockCheck = await validateAndDeductStock(
+      normalizedItems.map((it) => ({
+        productId: it.productId,
+        size: it.size,
+        colorId: it.colorId,
+        quantity: it.quantity,
+      }))
+    );
+
+    if (!stockCheck.ok) {
+      return NextResponse.json(
+        {
+          error:
+            stockCheck.error ||
+            "Quantidade indisponível em estoque para a cor/tamanho selecionado.",
+          insufficientSku: stockCheck.insufficientSku,
+          availableQuantity: stockCheck.availableQuantity,
+        },
+        { status: 409 }
+      );
+    }
+
+    // 3. Cálculo Server-Side do Frete
     const shipping = calculateShippingByUF(address.uf, validatedSubtotal);
     const totalAmount = Number((validatedSubtotal + shipping.price).toFixed(2));
     const orderReference = `ADA-${Date.now().toString().slice(-6)}`;
@@ -106,7 +153,7 @@ export async function POST(request: Request) {
         .join(" | "),
     });
 
-    // 3. Caso a chave MP_ACCESS_TOKEN já esteja configurada: cria Preferência Oficial no Mercado Pago
+    // 4. Caso a chave MP_ACCESS_TOKEN já esteja configurada: cria Preferência Oficial no Mercado Pago
     if (mpAccessToken && mpAccessToken.length > 10) {
       const client = new MercadoPagoConfig({
         accessToken: mpAccessToken,
@@ -158,6 +205,7 @@ export async function POST(request: Request) {
           },
           external_reference: orderReference,
           statement_descriptor: "REDES ADAMARI",
+          notification_url: `${siteUrl}/api/webhook`,
           metadata: {
             order_reference: orderReference,
             customer_name: customer.name,
@@ -182,6 +230,19 @@ export async function POST(request: Request) {
         },
       });
 
+      // Salva o pedido e itens no banco de dados (Supabase + Painel Admin)
+      await recordNewOrder({
+        orderReference,
+        paymentMethod,
+        customer,
+        address,
+        subtotal: Number(validatedSubtotal.toFixed(2)),
+        shippingCost: Number(shipping.price.toFixed(2)),
+        totalAmount,
+        mpPreferenceId: prefResponse.id,
+        items: normalizedItems,
+      });
+
       return NextResponse.json({
         mode: "mercadopago_live",
         orderReference,
@@ -191,31 +252,45 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Modo Demonstração Interativo (Quando MP_ACCESS_TOKEN ainda não foi preenchido no .env.local)
-    return NextResponse.json({
-      mode: "sandbox_preview",
+    // 5. Modo Demonstração Interativo (Fallback quando MP_ACCESS_TOKEN ainda não foi preenchido)
+    await recordNewOrder({
       orderReference,
-      totalAmount,
-      subtotal: validatedSubtotal,
-      shippingPrice: shipping.price,
       paymentMethod,
-      items: mpItems,
-      successRedirectUrl: `/pedido-confirmado?status=approved&${orderSummaryParams.toString()}`,
-      pixCopyPasteCode: `00020126580014BR.GOV.BCB.PIX0136redesadamari-mp-${orderReference.toLowerCase()}520400005303986540${totalAmount.toFixed(
-        2
-      )}5802BR5913REDES ADAMARI6009SAO PAULO62070503***6304ABCD`,
+      customer,
+      address,
+      subtotal: Number(validatedSubtotal.toFixed(2)),
+      shippingCost: Number(shipping.price.toFixed(2)),
+      totalAmount,
+      items: normalizedItems,
+    });
+
+    const demoCheckoutUrl = `/pedido-confirmado?status=approved&mode=sandbox&${orderSummaryParams.toString()}`;
+    const simulatedPixCode = `00020126580014BR.GOV.BCB.PIX0136redesadamari-mp-${orderReference.toLowerCase()}520400005303986540${totalAmount.toFixed(
+      2
+    )}5802BR5913REDES ADAMARI6015TABULEIRO NORTE62070503***6304ABCD`;
+
+    return NextResponse.json({
+      mode: "mercadopago_sandbox_preview",
+      orderReference,
+      checkoutUrl: demoCheckoutUrl,
+      successRedirectUrl: demoCheckoutUrl,
+      paymentMethod,
+      pixCopyPasteCode: simulatedPixCode,
+      totalAmount,
+      shippingPrice: shipping.price,
+      notice:
+        "Pedido registrado no Painel Admin e estoque atualizado! Configure MP_ACCESS_TOKEN para redirecionar ao checkout em produção do Mercado Pago.",
     });
   } catch (error) {
-    console.error("Erro no endpoint /api/checkout:", error);
+    console.error("[Checkout Error]:", error);
     return NextResponse.json(
       {
         error:
           error instanceof Error
             ? error.message
-            : "Não foi possível iniciar o pagamento.",
+            : "Erro interno ao iniciar checkout.",
       },
       { status: 500 }
     );
   }
 }
-
