@@ -163,7 +163,13 @@ High-end commercial Brazilian lifestyle, warm natural afternoon sunlight, cozy r
         }
       } catch (imgErr: any) {
         console.warn("[Gemini Nano Banana Image Generation Warning]:", imgErr);
-        modelNotice = `Aviso do Google Gemini: ${imgErr?.message || "Não foi possível gerar a nova imagem no momento"}. Exibindo a foto real de referência com as 3 legendas geradas pela IA.`;
+        const errMsg = String(imgErr?.message || imgErr || "");
+        if (errMsg.includes("402") || errMsg.toLowerCase().includes("payment")) {
+          modelNotice =
+            "Sua chave do Google AI Studio está no Plano Gratuito (que permite gerar textos e legendas). O Google exige vincular uma conta de faturamento no Google Cloud para gerar novas imagens com IA (~R$ 0,20 por imagem). Exibindo a foto real oficial do seu ateliê acompanhada das 3 legendas geradas pela IA!";
+        } else {
+          modelNotice = `Aviso do Google Gemini: ${errMsg || "Não foi possível gerar nova imagem no momento"}. Exibindo a foto real do produto com as 3 legendas geradas pela IA.`;
+        }
       }
 
       // Gera legendas persuasivas com o Gemini 4 Hydrogen
@@ -203,9 +209,13 @@ Separe as 3 opções exatamente com o divisor "---OPCAO---".`,
         imageUrl,
       });
 
+      const isLiveAiImage = imageUrl.startsWith("data:");
+
       return NextResponse.json({
-        mode: "gemini_nano_banana_live",
-        modelUsed: "gemini-nano-banana-2.1",
+        mode: isLiveAiImage ? "gemini_nano_banana_live" : "studio_assisted",
+        modelUsed: isLiveAiImage
+          ? "Gemini Nano Banana 2.1 (Foto Inédita IA)"
+          : "Gemini 4 Hydrogen (Legendas IA) + Foto Real do Ateliê",
         imageUrl,
         captions: generatedCaptions,
         promptUsed: fullVisualPrompt,
