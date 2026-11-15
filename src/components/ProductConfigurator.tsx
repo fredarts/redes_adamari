@@ -126,7 +126,7 @@ export function ProductConfigurator() {
       </div>
 
       {/* PASSO 1: SELETOR DOS 2 MODELOS COM FOTOS REAIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
         {(["rede-tradicional", "rede-mosquiteiro"] as ProductId[]).map((id) => {
           const item = PRODUCTS[id];
           const isSelected = selectedProductId === id;
@@ -142,14 +142,14 @@ export function ProductConfigurator() {
                   setSelectedColorId("verde-militar");
                 }
               }}
-              className={`group text-left rounded-[28px] overflow-hidden border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-stretch ${
+              className={`group text-left rounded-[28px] overflow-hidden border-2 transition-all cursor-pointer flex flex-col xl:flex-row items-stretch ${
                 isSelected
                   ? "border-[#D95D39] bg-white shadow-warm-lg ring-4 ring-[#D95D39]/15"
                   : "border-[#E6DEC8] bg-[#FDFBF7] hover:border-[#D4C5A9] shadow-warm"
               }`}
             >
               {/* Foto Real na lateral/topo do Card */}
-              <div className="sm:w-46 h-46 sm:h-auto relative shrink-0 overflow-hidden bg-[#F5EFE6]">
+              <div className="w-full xl:w-48 h-48 sm:h-52 xl:h-auto relative shrink-0 overflow-hidden bg-[#F5EFE6]">
                 <img
                   src={item.coverPhoto}
                   alt={item.name}
@@ -170,7 +170,7 @@ export function ProductConfigurator() {
               <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-serif-editorial text-lg sm:text-xl font-bold text-[#2C1E18]">
+                    <h3 className="font-serif-editorial text-lg sm:text-xl font-bold text-[#2C1E18] leading-tight">
                       {item.name}
                     </h3>
                     <div
@@ -188,11 +188,11 @@ export function ProductConfigurator() {
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-[#EFE8D8] flex items-center justify-between text-xs">
+                <div className="mt-4 pt-3 border-t border-[#EFE8D8] flex flex-wrap items-center justify-between gap-2 text-xs">
                   <span className="font-semibold text-[#7A6252]">
                     Tamanhos M, G, GG e XGG
                   </span>
-                  <span className="font-bold text-[#2C1E18]">
+                  <span className="font-bold text-[#2C1E18] text-right">
                     A partir de{" "}
                     <strong className="text-sm text-[#1E4620]">
                       {formatBRL(startingPix)}
@@ -206,9 +206,9 @@ export function ProductConfigurator() {
       </div>
 
       {/* GRID PRINCIPAL: GALERIA DE FOTOS REAIS + SELETOR DE COR E TAMANHO (Responsivo em Celular, Tablet e Desktop) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
-        {/* Coluna Esquerda: Galeria de Fotos Reais (6 colunas no Tablet, 7 no Desktop) */}
-        <div className="md:col-span-6 lg:col-span-7 md:sticky md:top-24 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        {/* Coluna Esquerda: Galeria de Fotos Reais */}
+        <div className="lg:col-span-7 lg:sticky lg:top-24 space-y-4">
           <HammockVisualizer
             product={product}
             selectedColor={selectedColor}
@@ -228,8 +228,8 @@ export function ProductConfigurator() {
           </div>
         </div>
 
-        {/* Coluna Direita: Painel de Escolha de Cor, Tamanho, Estoque e Compra (6 colunas no Tablet, 5 no Desktop) */}
-        <div className="md:col-span-6 lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-6 lg:p-7 border border-[#E6DEC8] shadow-warm space-y-6">
+        {/* Coluna Direita: Painel de Escolha de Cor, Tamanho, Estoque e Compra */}
+        <div className="lg:col-span-5 bg-white rounded-[28px] p-5 sm:p-6 lg:p-7 border border-[#E6DEC8] shadow-warm space-y-6">
           {/* Título e Bloco de Preço */}
           <div className="border-b border-[#EFE8D8] pb-5">
             <div className="flex items-center justify-between gap-2 mb-1">
@@ -469,38 +469,42 @@ export function ProductConfigurator() {
                 </span>
               </div>
             ) : isLowStock ? (
-              <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-2 text-xs text-amber-900 font-bold">
+              <div className="px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs text-amber-900 font-bold">
                 <span className="flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4 text-[#D95D39] shrink-0" />
                   🔥 Restam apenas <strong>{totalSkuStock} unidades</strong>{" "}
                   nesta cor e tamanho!
                 </span>
-                <span className="text-[10px] uppercase tracking-wider bg-amber-200/70 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] uppercase tracking-wider bg-amber-200/80 px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0">
                   Últimas Peças
                 </span>
               </div>
             ) : (
-              <div className="px-3 py-2 rounded-xl bg-[#E9F3E8]/70 border border-[#C6E2C3] flex items-center justify-between text-xs text-[#1E4620] font-semibold">
+              <div className="px-3.5 py-2.5 rounded-xl bg-[#E9F3E8]/80 border border-[#C6E2C3] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs text-[#1E4620] font-semibold">
                 <span className="flex items-center gap-1.5">
-                  <PackageCheck className="w-4 h-4 shrink-0" />
-                  Estoque disponível ({totalSkuStock} unidades prontas)
+                  <PackageCheck className="w-4 h-4 shrink-0 text-[#1E4620]" />
+                  <span>
+                    Estoque disponível (<strong>{totalSkuStock} unidades</strong> prontas)
+                  </span>
                 </span>
-                <span className="text-[11px] font-bold">Envio Imediato</span>
+                <span className="text-[11px] font-bold whitespace-nowrap bg-[#1E4620]/10 px-2.5 py-0.5 rounded-full shrink-0">
+                  Envio Imediato
+                </span>
               </div>
             )}
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center border border-[#D4C5A9] rounded-2xl bg-[#FAF6F0] p-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex items-center justify-between sm:justify-center border border-[#D4C5A9] rounded-2xl bg-[#FAF6F0] p-1 shrink-0">
                 <button
                   type="button"
                   disabled={isOutOfStock || quantity <= 1}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-10 h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-40 transition cursor-pointer"
+                  className="w-11 sm:w-10 h-12 sm:h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-40 transition cursor-pointer"
                   aria-label="Diminuir quantidade"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
-                <span className="w-9 text-center font-extrabold text-base text-[#2C1E18]">
+                <span className="w-12 sm:w-9 text-center font-extrabold text-base text-[#2C1E18]">
                   {isOutOfStock ? 0 : quantity}
                 </span>
                 <button
@@ -509,7 +513,7 @@ export function ProductConfigurator() {
                   onClick={() =>
                     setQuantity((q) => Math.min(remainingToAdd, q + 1))
                   }
-                  className="w-10 h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-40 transition cursor-pointer"
+                  className="w-11 sm:w-10 h-12 sm:h-11 rounded-xl flex items-center justify-center text-[#2C1E18] hover:bg-white disabled:opacity-40 transition cursor-pointer"
                   aria-label="Aumentar quantidade"
                 >
                   <Plus className="w-4 h-4" />
@@ -520,27 +524,32 @@ export function ProductConfigurator() {
                 type="button"
                 disabled={isOutOfStock || remainingToAdd <= 0}
                 onClick={handleAddToCart}
-                className={`flex-1 h-13 rounded-2xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 px-5 transition-all ${
+                className={`flex-1 min-h-[52px] py-3.5 px-5 rounded-2xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 transition-all leading-tight text-center ${
                   isOutOfStock || remainingToAdd <= 0
                     ? "bg-[#D4C5A9] text-[#5C4438] cursor-not-allowed"
                     : "bg-solar-gradient active:scale-[0.99] text-white shadow-lg shadow-[#D95D39]/30 cursor-pointer"
                 }`}
               >
                 {isOutOfStock ? (
-                  "Cor / Tamanho Esgotado"
+                  <span>Cor / Tamanho Esgotado</span>
                 ) : remainingToAdd <= 0 ? (
-                  "Limite do Estoque na Sacola"
+                  <span>Limite do Estoque na Sacola</span>
                 ) : justAdded ? (
-                  <>
-                    <Check className="w-5 h-5 stroke-[3]" />
+                  <span className="flex items-center gap-2">
+                    <Check className="w-5 h-5 stroke-[3] shrink-0" />
                     Rede Adicionada!
-                  </>
+                  </span>
                 ) : (
-                  <>
-                    <ShoppingBag className="w-5 h-5" />
-                    Colocar na Sacola •{" "}
-                    {formatBRL(sizeSpec.pricePix * quantity)}
-                  </>
+                  <span className="flex items-center justify-center flex-wrap gap-x-2 gap-y-0.5">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      <ShoppingBag className="w-5 h-5 shrink-0" />
+                      Colocar na Sacola
+                    </span>
+                    <span className="text-white/80 font-normal hidden sm:inline">•</span>
+                    <span className="whitespace-nowrap text-amber-100 font-black">
+                      {formatBRL(sizeSpec.pricePix * quantity)}
+                    </span>
+                  </span>
                 )}
               </button>
             </div>
