@@ -141,6 +141,7 @@ export default function AdminDashboardPage() {
     {}
   );
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [savedTrackingId, setSavedTrackingId] = useState<string | null>(null);
   const [labelOrder, setLabelOrder] = useState<OrderRecord | null>(null);
 
   // Estado da Aba de Controle de Estoque
@@ -331,6 +332,7 @@ export default function AdminDashboardPage() {
         const trackMap: Record<string, string> = {};
         for (const ord of json.orders || []) {
           trackMap[ord.id] = ord.trackingCode || "";
+          trackMap[ord.orderReference] = ord.trackingCode || "";
         }
         setTrackingInputs(trackMap);
 
@@ -415,6 +417,22 @@ export default function AdminDashboardPage() {
         }
         setEditedStock(updatedStock);
         setGlobalStockMap(updatedStock);
+
+        if (json.analytics.orders) {
+          setTrackingInputs((prev) => {
+            const next = { ...prev };
+            for (const o of json.analytics.orders) {
+              next[o.id] = o.trackingCode || "";
+              next[o.orderReference] = o.trackingCode || "";
+            }
+            return next;
+          });
+        }
+
+        if (changes.trackingCode !== undefined) {
+          setSavedTrackingId(orderId);
+          setTimeout(() => setSavedTrackingId(null), 2500);
+        }
       }
     } finally {
       setSavingOrderId(null);
@@ -1606,25 +1624,50 @@ export default function AdminDashboardPage() {
                           <input
                             type="text"
                             placeholder="Cód. Rastreio (ex: AA123456789BR)"
-                            value={trackingInputs[ord.id] || ""}
-                            onChange={(e) =>
+                            value={
+                              trackingInputs[ord.id] ??
+                              trackingInputs[ord.orderReference] ??
+                              ord.trackingCode ??
+                              ""
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
                               setTrackingInputs((prev) => ({
                                 ...prev,
-                                [ord.id]: e.target.value,
-                              }))
-                            }
+                                [ord.id]: val,
+                                [ord.orderReference]: val,
+                              }));
+                            }}
                             className="w-48 rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] px-3 py-2 text-xs font-mono font-bold uppercase text-[#2C1E18]"
                           />
                           <button
                             type="button"
-                            onClick={() =>
+                            disabled={savingOrderId === ord.id}
+                            onClick={() => {
+                              const code =
+                                trackingInputs[ord.id] ??
+                                trackingInputs[ord.orderReference] ??
+                                ord.trackingCode ??
+                                "";
                               handleUpdateOrder(ord.id, {
-                                trackingCode: trackingInputs[ord.id] || "",
-                              })
-                            }
-                            className="px-3 py-2 rounded-xl bg-[#2C1E18] text-white text-xs font-bold hover:bg-[#3D2B22] cursor-pointer"
+                                trackingCode: code,
+                              });
+                            }}
+                            className="px-3 py-2 rounded-xl bg-[#2C1E18] text-white text-xs font-bold hover:bg-[#3D2B22] cursor-pointer disabled:opacity-50 transition"
                           >
-                            Salvar Rastreio
+                            {savingOrderId === ord.id ? (
+                              <span className="flex items-center gap-1">
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                Salvando...
+                              </span>
+                            ) : savedTrackingId === ord.id ? (
+                              <span className="flex items-center gap-1 text-emerald-400 font-extrabold">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                Salvo!
+                              </span>
+                            ) : (
+                              "Salvar Rastreio"
+                            )}
                           </button>
                         </div>
                       </div>
