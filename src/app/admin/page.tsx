@@ -256,6 +256,7 @@ export default function AdminDashboardPage() {
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
   const [apiKeySavedNotice, setApiKeySavedNotice] = useState<boolean>(false);
   const [studioErrorNotice, setStudioErrorNotice] = useState<string | null>(null);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
 
   const setGlobalStockMap = useCartStore((s) => s.setStockMap);
 
@@ -3025,91 +3026,41 @@ export default function AdminDashboardPage() {
            ==================================================================== */}
         {activeTab === "social_studio" && (
           <div className="space-y-6">
-            {/* PAINEL DE CONFIGURAÇÃO DA CHAVE GOOGLE AI STUDIO */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E6DEC8] shadow-warm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#FAF6F0] pb-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#F5E6D3] flex items-center justify-center text-[#9C5221] shrink-0 mt-0.5">
-                    <Key className="w-5 h-5 text-[#D95D39]" />
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-serif-editorial text-lg font-bold text-[#2C1E18]">
-                        Configuração da API Google AI Studio
-                      </h3>
-                      {geminiApiKey.trim().length > 10 ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#1E4620] bg-[#E9F3E8] px-2.5 py-0.5 rounded-full">
-                          <CheckCircle2 className="w-3 h-3 text-[#1E4620]" /> Chave Conectada
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#9C5221] bg-[#FDF8F2] border border-[#E6DEC8] px-2.5 py-0.5 rounded-full">
-                          Modo Demonstração (Sem Chave)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#5C4438] mt-0.5">
-                      Cole sua chave do Google AI Studio para gerar fotos inéditas no <strong>Gemini Nano Banana 2.1</strong> e legendas automáticas. Fica salva com segurança no seu navegador.
-                    </p>
-                  </div>
+            {/* BARRA COMPACTA DO ESTÚDIO COM BOTÃO PARA ABRIR MODAL DA API */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-3xl p-4 sm:p-5 border border-[#E6DEC8] shadow-warm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#F5E6D3] flex items-center justify-center text-[#9C5221] shrink-0">
+                  <Sparkles className="w-5 h-5 text-[#D95D39]" />
                 </div>
-
-                <a
-                  href="https://aistudio.google.com/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FAF6F0] hover:bg-[#EFE8D8] border border-[#D4C5A9] text-xs font-extrabold text-[#2C1E18] transition shrink-0 self-start md:self-auto cursor-pointer"
-                >
-                  <span>Pegar chave gratuita no AI Studio</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-[#9C5221]" />
-                </a>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="relative flex-1">
-                  <input
-                    type={showApiKey ? "text" : "password"}
-                    value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="Cole aqui sua API Key do Google AI Studio (ex: AIzaSy...)"
-                    className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] pl-3.5 pr-10 py-2.5 text-xs font-mono text-[#2C1E18] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D95D39]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A6252] hover:text-[#2C1E18] cursor-pointer"
-                    title={showApiKey ? "Ocultar chave" : "Mostrar chave"}
-                  >
-                    {showApiKey ? (
-                      <EyeOff className="w-4 h-4" />
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-serif-editorial text-lg sm:text-xl font-bold text-[#2C1E18]">
+                      Estúdio Criativo IA (Nano Banana)
+                    </h2>
+                    {geminiApiKey.trim().length > 10 ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#1E4620] bg-[#E9F3E8] px-2.5 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3 text-[#1E4620]" /> Chave Conectada
+                      </span>
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#9C5221] bg-[#FDF8F2] border border-[#E6DEC8] px-2.5 py-0.5 rounded-full">
+                        Modo Demonstração (Sem Chave)
+                      </span>
                     )}
-                  </button>
+                  </div>
+                  <p className="text-xs text-[#5C4438] mt-0.5">
+                    Gere fotos publicitárias oficiais preservando o Tactel, bolsinho e cordas brancas 2,50mm + 3 legendas prontas!
+                  </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleSaveGeminiKey(geminiApiKey)}
-                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#2C1E18] hover:bg-[#3D2B22] text-white text-xs font-extrabold transition cursor-pointer shrink-0"
-                >
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  Salvar Chave
-                </button>
               </div>
 
-              {apiKeySavedNotice && (
-                <p className="text-[11px] font-bold text-[#1E4620] mt-2 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Chave salva com sucesso no armazenamento local deste navegador!
-                </p>
-              )}
-
-              {/* GARANTIA DE FIDELIDADE VISUAL */}
-              <div className="mt-3.5 pt-3 border-t border-[#FAF6F0] flex items-start sm:items-center gap-2 text-[11px] text-[#7A6252]">
-                <ShieldCheck className="w-4 h-4 text-[#D95D39] shrink-0 mt-0.5 sm:mt-0" />
-                <span>
-                  <strong>Garantia Anti-Alucinação Ativada:</strong> O sistema utiliza as fotos reais capturadas do Ateliê Adamari como referência visual. A IA é estritamente instruída a <u>nunca alterar</u> o padrão: <strong>cordas brancas 2,50mm trançadas UV</strong> e <strong>corpo em tecido Tactel liso com bolsinho lateral integrado</strong>.
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#FAF6F0] hover:bg-[#EFE8D8] border border-[#D4C5A9] text-xs font-extrabold text-[#2C1E18] transition shrink-0 cursor-pointer shadow-sm self-start sm:self-auto"
+              >
+                <Key className="w-4 h-4 text-[#D95D39]" />
+                <span>{geminiApiKey.trim().length > 10 ? "Alterar Chave Gemini" : "Configurar Chave Google AI"}</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -3349,6 +3300,115 @@ export default function AdminDashboardPage() {
         </div>
         )}
       </main>
+
+      {/* ======================================================================
+          MODAL DE CONFIGURAÇÃO DA CHAVE GOOGLE AI STUDIO (GEMINI)
+         ====================================================================== */}
+      {isApiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#EFE8D8] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#F5E6D3] flex items-center justify-center text-[#9C5221]">
+                  <Key className="w-5 h-5 text-[#D95D39]" />
+                </div>
+                <div>
+                  <h3 className="font-serif-editorial text-xl font-bold text-[#2C1E18]">
+                    Configurar Google AI Studio
+                  </h3>
+                  <p className="text-[11px] text-[#7A6252]">
+                    Fica salva com segurança no seu navegador
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsApiKeyModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-[#FAF6F0] cursor-pointer"
+              >
+                <X className="w-5 h-5 text-[#5C4438]" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#5C4438] leading-relaxed">
+              Cole sua chave de API para habilitar as legendas persuasivas gratuitas e/ou imagens inéditas no <strong>Gemini Nano Banana</strong>.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#2C1E18]">
+                Sua API Key do Google AI Studio:
+              </label>
+              <div className="relative">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  placeholder="Cole aqui (ex: AIzaSy...)"
+                  className="w-full rounded-xl border border-[#D4C5A9] bg-[#FAF6F0] pl-3.5 pr-10 py-2.5 text-xs font-mono text-[#2C1E18] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D95D39]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A6252] hover:text-[#2C1E18] cursor-pointer"
+                  title={showApiKey ? "Ocultar chave" : "Mostrar chave"}
+                >
+                  {showApiKey ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#9C5221] hover:underline"
+              >
+                <span>Criar Chave Grátis no AI Studio</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsApiKeyModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-[#D4C5A9] text-xs font-bold text-[#5C4438] hover:bg-[#FAF6F0] cursor-pointer"
+                >
+                  Fechar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSaveGeminiKey(geminiApiKey);
+                    setTimeout(() => setIsApiKeyModalOpen(false), 600);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2C1E18] hover:bg-[#3D2B22] text-white text-xs font-extrabold cursor-pointer shadow-md"
+                >
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  Salvar e Fechar
+                </button>
+              </div>
+            </div>
+
+            {apiKeySavedNotice && (
+              <p className="text-[11px] font-bold text-[#1E4620] flex items-center gap-1 bg-[#E9F3E8] p-2.5 rounded-xl">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#1E4620]" /> Chave salva com sucesso no navegador!
+              </p>
+            )}
+
+            <div className="pt-3 border-t border-[#FAF6F0] flex items-start gap-2 text-[11px] text-[#7A6252]">
+              <ShieldCheck className="w-4 h-4 text-[#D95D39] shrink-0 mt-0.5" />
+              <span>
+                <strong>Garantia Anti-Alucinação:</strong> O sistema sempre vincula as fotos reais do seu ateliê para garantir cordas brancas 2,50mm trançadas e tecido 100% Tactel com bolsinho lateral.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ======================================================================
           MODAL DE CADASTRO MANUAL DE NOVO CLIENTE
