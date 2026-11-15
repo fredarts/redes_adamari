@@ -967,23 +967,23 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* BARRA DE NAVEGAÇÃO DAS 6 ABAS */}
-        <div className="max-w-7xl mx-auto mt-3 pt-2 border-t border-[#3D2B22] flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="max-w-7xl mx-auto mt-3 pt-2 border-t border-[#3D2B22] flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
           {[
             {
               id: "overview",
-              label: "1. Visão Geral & Rankings",
+              label: "Visão Geral",
               icon: BarChart3,
               badge: null,
             },
             {
               id: "orders",
-              label: "2. Pedidos & Entregas",
+              label: "Pedidos",
               icon: Truck,
               badge: kpis?.toShipCount ? `${kpis.toShipCount} p/ enviar` : null,
             },
             {
               id: "inventory",
-              label: "3. Controle de Estoque",
+              label: "Estoque",
               icon: Boxes,
               badge:
                 kpis && kpis.outOfStockCount + kpis.lowStockCount > 0
@@ -992,7 +992,7 @@ export default function AdminDashboardPage() {
             },
             {
               id: "customers",
-              label: "4. Clientes & Histórico (CRM)",
+              label: "Clientes",
               icon: Users,
               badge: data?.customers.length
                 ? `${data.customers.length}`
@@ -1000,15 +1000,15 @@ export default function AdminDashboardPage() {
             },
             {
               id: "marketing",
-              label: "5. Campanhas Marketing",
+              label: "Marketing",
               icon: Mail,
               badge: null,
             },
             {
               id: "social_studio",
-              label: "6. Estúdio IA (Nano Banana)",
+              label: "Estúdio IA",
               icon: Sparkles,
-              badge: "IA",
+              badge: "Nano Banana",
             },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1018,21 +1018,21 @@ export default function AdminDashboardPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as AdminTab)}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   active
                     ? "bg-[#FAF6F0] text-[#2C1E18] shadow-sm"
                     : "text-[#C9B89A] hover:text-white hover:bg-[#3D2B22]"
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 ${
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
                     active ? "text-[#D95D39]" : "text-[#C9B89A]"
                   }`}
                 />
-                {tab.label}
+                <span>{tab.label}</span>
                 {tab.badge && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-black ${
                       active
                         ? "bg-[#D95D39] text-white"
                         : "bg-[#4E382D] text-amber-300"
