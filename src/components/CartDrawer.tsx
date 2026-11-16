@@ -231,6 +231,8 @@ export function CartDrawer() {
                 <img
                   src="/images/logo.png"
                   alt="Ateliê Adamari"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-contain rounded-full"
                 />
               </div>
@@ -328,6 +330,8 @@ export function CartDrawer() {
                             : item.color.photoUrl
                         }
                         alt={item.product.shortName}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                       <span

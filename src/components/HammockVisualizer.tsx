@@ -126,6 +126,8 @@ export function HammockVisualizer({
             <img
               src={activePhotoUrl}
               alt={activePhotoMeta.title}
+              loading="lazy"
+              decoding="async"
               onClick={() => setIsZoomOpen(true)}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02] cursor-zoom-in"
             />
@@ -205,6 +207,8 @@ export function HammockVisualizer({
                     <img
                       src={photo.url}
                       alt={photo.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   </button>

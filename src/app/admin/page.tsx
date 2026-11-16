@@ -928,6 +928,7 @@ export default function AdminDashboardPage() {
           <div className="pt-3 border-t border-[#EFE8D8] text-center">
             <Link
               href="/"
+              prefetch={false}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5C4438] hover:text-[#D95D39]"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Voltar para a Loja Pública
@@ -1012,6 +1013,7 @@ export default function AdminDashboardPage() {
             <Link
               href="/"
               target="_blank"
+              prefetch={false}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-solar-gradient text-xs font-extrabold text-white shadow-sm"
             >
               Ver Loja <ExternalLink className="w-3.5 h-3.5" />

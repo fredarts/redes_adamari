@@ -259,6 +259,8 @@ export default function HomePage() {
                 <img
                   src="/images/hero-casal-jardim.jpg"
                   alt="Casal descansando em Rede Adamari de Tactel no jardim"
+                  fetchPriority="high"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-[#1A110D]/85 via-[#1A110D]/35 to-transparent text-white">
@@ -277,6 +279,8 @@ export default function HomePage() {
                   <img
                     src="/images/rede-amarela-detalhe-punho.jpg"
                     alt="Detalhe das casinhas costuradas, cordas brancas 2,5mm e bolsinho"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-[#1A110D]/85 to-transparent text-white">
@@ -290,6 +294,8 @@ export default function HomePage() {
                   <img
                     src="/images/rede-turquesa-sol.jpg"
                     alt="Rede Azul Turquesa na varanda com piscina"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-[#1A110D]/85 to-transparent text-white">
@@ -413,6 +419,8 @@ export default function HomePage() {
                     <img
                       src={card.img}
                       alt={card.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <span className="absolute top-3 left-3 bg-[#FAF6F0]/95 backdrop-blur-xs text-[#2C1E18] border border-[#E6DEC8] text-[11px] font-bold px-3 py-1 rounded-full shadow-xs">
@@ -456,6 +464,8 @@ export default function HomePage() {
                   <img
                     src="/images/rede-amarela-detalhe-punho.jpg"
                     alt="Detalhe das cordas brancas 2,50mm passando pelas casinhas do Tactel"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute bottom-3 left-3 right-3 bg-[#1A110D]/80 backdrop-blur-xs rounded-2xl p-3 text-xs text-white border border-white/10">
