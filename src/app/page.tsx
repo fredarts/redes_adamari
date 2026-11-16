@@ -5,7 +5,6 @@ import {
   Feather,
   Award,
   CheckCircle2,
-  Ruler,
   HelpCircle,
   QrCode,
   CreditCard,
@@ -18,10 +17,8 @@ import {
 } from "lucide-react";
 import {
   PRODUCTS,
-  SIZE_ORDER,
   TACTEL_COLORS,
   ROPE_TECH_SPECS,
-  formatBRL,
 } from "@/data/products";
 import { Navbar } from "@/components/Navbar";
 import { ProductConfigurator } from "@/components/ProductConfigurator";
@@ -544,115 +541,6 @@ export default function HomePage() {
                 </ul>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* 5. GUIA COMPARATIVO DE TAMANHOS (M, G, GG, XGG) (#guia-tamanhos) */}
-        <section
-          id="guia-tamanhos"
-          className="scroll-mt-24 py-12 sm:py-16 px-4 sm:px-6 max-w-7xl mx-auto"
-        >
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F5E6D3] border border-[#E6D2B5] text-[#9C5221] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider mb-3">
-              <Ruler className="w-3.5 h-3.5" /> Escolha o Tamanho Ideal
-            </span>
-            <h2 className="font-serif-editorial text-2xl sm:text-4xl font-bold text-[#2C1E18]">
-              Tamanhos M, G, GG e XGG para qualquer espaço
-            </h2>
-            <p className="text-sm sm:text-base text-[#5C4438] mt-2">
-              Tanto a <strong>Rede Tradicional</strong> quanto a{" "}
-              <strong>Rede com Mosquiteiro</strong> estão disponíveis nas 4
-              metragens abaixo:
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {SIZE_ORDER.map((code) => {
-              const trad = PRODUCTS["rede-tradicional"].sizes[code];
-              const mosq = PRODUCTS["rede-mosquiteiro"].sizes[code];
-
-              return (
-                <div
-                  key={code}
-                  className={`rounded-[28px] p-5 border flex flex-col justify-between transition-all ${
-                    code === "GG"
-                      ? "border-2 border-[#D95D39] bg-white shadow-warm-lg ring-4 ring-[#D95D39]/10 relative"
-                      : "border-[#E6DEC8] bg-white shadow-warm"
-                  }`}
-                >
-                  {code === "GG" && (
-                    <span className="-top-3 left-5 absolute bg-solar-gradient text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
-                      Mais Escolhido
-                    </span>
-                  )}
-
-                  <div>
-                    <div className="flex items-center justify-between border-b border-[#EFE8D8] pb-3">
-                      <div>
-                        <span className="text-xs font-bold text-[#7A6252] uppercase">
-                          Tamanho
-                        </span>
-                        <h3 className="font-serif-editorial text-3xl font-bold text-[#2C1E18]">
-                          {code}
-                        </h3>
-                      </div>
-                      <span className="px-3 py-1 rounded-full bg-[#E9F3E8] border border-[#C6E2C3] text-[#1E4620] text-xs font-bold">
-                        Até {trad.capacityKg} kg
-                      </span>
-                    </div>
-
-                    <div className="py-4 space-y-2.5 text-xs">
-                      <div>
-                        <span className="text-[#7A6252] block">
-                          Medida do Tecido:
-                        </span>
-                        <strong className="text-[#2C1E18] text-sm">
-                          {trad.clothDimensions.replace(" (Tecido)", "")}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-[#7A6252] block">
-                          Comprimento Total (Punho a Punho):
-                        </span>
-                        <strong className="text-[#2C1E18] text-sm">
-                          {trad.totalLengthWithCords.replace(
-                            " (Punho a Punho)",
-                            ""
-                          )}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-[#7A6252] block">
-                          Para quem é indicada:
-                        </span>
-                        <p className="text-[#4A3728] font-medium mt-0.5 leading-relaxed">
-                          {trad.recommendedFor}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-[#EFE8D8] space-y-2 text-xs">
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF6F0]">
-                      <span className="font-semibold text-[#5C4438]">
-                        Rede Tradicional:
-                      </span>
-                      <strong className="text-[#1E4620] font-extrabold">
-                        {formatBRL(trad.pricePix)} PIX
-                      </strong>
-                    </div>
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF6F0]">
-                      <span className="font-semibold text-[#5C4438]">
-                        C/ Mosquiteiro:
-                      </span>
-                      <strong className="text-[#1E4620] font-extrabold">
-                        {formatBRL(mosq.pricePix)} PIX
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </section>
 

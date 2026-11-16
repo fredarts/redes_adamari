@@ -16,7 +16,6 @@ export function Navbar() {
     { href: "#acessorios", label: "Acessórios" },
     { href: "#galeria", label: "Fotos & Ambientes" },
     { href: "#qualidade", label: "Tecido & Punhos UV" },
-    { href: "#guia-tamanhos", label: "Tamanhos" },
     { href: "#avaliacoes", label: "Avaliações" },
     { href: "#duvidas", label: "Dúvidas" },
   ];

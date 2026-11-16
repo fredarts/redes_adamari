@@ -1155,20 +1155,27 @@ export default function AdminDashboardPage() {
 
               <div className="bg-white rounded-3xl p-5 border border-[#E6DEC8] shadow-warm">
                 <div className="flex items-center justify-between text-xs font-bold text-[#7A6252]">
-                  <span>SAÚDE DO ESTOQUE (80 SKUs)</span>
-                  <Boxes className="w-4 h-4 text-[#9C5221]" />
+                  <span>ESTOQUE TOTAL PRONTA ENTREGA</span>
+                  <Boxes className="w-4 h-4 text-[#1E4620]" />
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-[#2C1E18] mt-2">
-                  {kpis.totalStockUnits} redes
+                <div className="text-2xl sm:text-3xl font-black text-[#1E4620] mt-2">
+                  {kpis.totalStockUnits} unidades
                 </div>
-                <p className="text-xs text-[#5C4438] mt-1">
-                  <strong className="text-red-600">
-                    {kpis.outOfStockCount} esgotadas
-                  </strong>{" "}
-                  •{" "}
-                  <strong className="text-amber-700">
-                    {kpis.lowStockCount} estoque baixo
-                  </strong>
+                <p className="text-xs mt-1">
+                  {kpis.outOfStockCount === 0 ? (
+                    <span className="text-[#1E4620] font-bold inline-flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 stroke-[3]" /> 100% abastecido (0 esgotadas)
+                    </span>
+                  ) : (
+                    <strong className="text-red-600">
+                      ⚠️ {kpis.outOfStockCount} variação(ões) esgotada(s)
+                    </strong>
+                  )}
+                  {kpis.lowStockCount > 0 ? (
+                    <span className="text-amber-700 font-bold ml-1.5">
+                      • {kpis.lowStockCount} estoque baixo
+                    </span>
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -1729,31 +1736,33 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {(
-                    [
-                      "rede-tradicional",
-                      "rede-mosquiteiro",
-                    ] as ProductId[]
-                  ).map((pid) => (
-                    <button
-                      key={pid}
-                      type="button"
-                      onClick={() => setStockProductFilter(pid)}
-                      className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold border-2 transition cursor-pointer ${
-                        stockProductFilter === pid
-                          ? "border-[#D95D39] bg-[#2C1E18] text-white shadow-sm"
-                          : "border-[#E6DEC8] bg-[#FAF6F0] text-[#5C4438]"
-                      }`}
-                    >
-                      {PRODUCTS[pid].name}
-                    </button>
-                  ))}
+                  <div className="inline-flex p-1 rounded-2xl bg-[#FAF6F0] border border-[#E6DEC8] gap-1">
+                    {(
+                      [
+                        "rede-tradicional",
+                        "rede-mosquiteiro",
+                      ] as ProductId[]
+                    ).map((pid) => (
+                      <button
+                        key={pid}
+                        type="button"
+                        onClick={() => setStockProductFilter(pid)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                          stockProductFilter === pid
+                            ? "bg-[#2C1E18] text-white shadow-xs"
+                            : "text-[#5C4438] hover:text-[#2C1E18] hover:bg-white/80"
+                        }`}
+                      >
+                        {PRODUCTS[pid].shortName}
+                      </button>
+                    ))}
+                  </div>
 
                   <button
                     type="button"
                     disabled={savingStock}
                     onClick={() => handleSaveStockChanges()}
-                    className="px-5 py-2.5 rounded-2xl bg-solar-gradient text-white text-xs font-extrabold shadow-md cursor-pointer"
+                    className="px-5 py-2.5 rounded-2xl bg-solar-gradient text-white text-xs font-extrabold shadow-md hover:opacity-95 transition cursor-pointer"
                   >
                     {savingStock
                       ? "Salvando Estoque..."
@@ -1780,7 +1789,9 @@ export default function AdminDashboardPage() {
                         </th>
                       ))}
                       <th className="py-3 px-3 text-center">Total da Cor</th>
-                      <th className="py-3 px-3 text-right">Ação Rápida</th>
+                      <th className="py-3 px-3 text-right min-w-[170px]">
+                        Ações Rápidas
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EFE8D8] text-sm">
@@ -1888,33 +1899,39 @@ export default function AdminDashboardPage() {
                             </span>
                           </td>
 
-                          <td className="py-3 px-3 text-right space-x-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleSetRowColorStock(
-                                  stockProductFilter,
-                                  color.id,
-                                  10
-                                )
-                              }
-                              className="px-2.5 py-1.5 rounded-xl bg-[#E9F3E8] text-[#1E4620] text-[11px] font-bold hover:opacity-85 cursor-pointer"
-                            >
-                              Definir 10 un.
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleSetRowColorStock(
-                                  stockProductFilter,
-                                  color.id,
-                                  0
-                                )
-                              }
-                              className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-700 text-[11px] font-bold hover:bg-red-100 cursor-pointer"
-                            >
-                              Zerar Cor
-                            </button>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSetRowColorStock(
+                                    stockProductFilter,
+                                    color.id,
+                                    10
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#E9F3E8] hover:bg-[#D5EAD3] border border-[#B8DCB4] text-[#1E4620] text-xs font-bold transition shadow-2xs hover:shadow-xs cursor-pointer active:scale-95"
+                                title="Definir 10 unidades em todos os tamanhos desta cor"
+                              >
+                                <Check className="w-3.5 h-3.5 text-[#1E4620] stroke-[2.5]" />
+                                <span>Definir 10</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSetRowColorStock(
+                                    stockProductFilter,
+                                    color.id,
+                                    0
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition shadow-2xs hover:shadow-xs cursor-pointer active:scale-95"
+                                title="Zerar o estoque de todos os tamanhos desta cor"
+                              >
+                                <X className="w-3.5 h-3.5 text-rose-500 stroke-[2.5]" />
+                                <span>Zerar</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
