@@ -45,6 +45,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import {
+  ACCESSORY_LIST,
   PRODUCTS,
   TACTEL_COLORS,
   SIZE_ORDER,
@@ -1920,6 +1921,132 @@ export default function AdminDashboardPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* ESTOQUE DOS 3 ACESSÓRIOS DE INSTALAÇÃO */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E6DEC8] shadow-warm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EFE8D8] pb-4">
+                <div>
+                  <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider bg-[#FEF3C7] text-[#9C5221] border border-[#FDE68A] px-3 py-1 rounded-full mb-1.5">
+                    Kits de Instalação & Acessórios
+                  </span>
+                  <h3 className="font-serif-editorial text-xl font-bold text-[#2C1E18]">
+                    Controle de Estoque — Ganchos Armadores, Molas e Cordas
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5C4438]">
+                    Gerencie a quantidade disponível de cada um dos 3 acessórios
+                    vendidos na vitrine e no Compre Junto da sacola.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={savingStock}
+                  onClick={() => handleSaveStockChanges()}
+                  className="px-5 py-2.5 rounded-2xl bg-solar-gradient text-white text-xs font-extrabold shadow-md cursor-pointer shrink-0"
+                >
+                  {savingStock
+                    ? "Salvando Estoque..."
+                    : "Salvar Estoque de Acessórios"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {ACCESSORY_LIST.map((acc) => {
+                  const sku = `${acc.id}-UNICO-padrao`;
+                  const qty = editedStock[sku] ?? 25;
+                  const isZero = qty === 0;
+                  const isLow = qty > 0 && qty <= 4;
+
+                  return (
+                    <div
+                      key={acc.id}
+                      className={`p-4 rounded-2xl border-2 flex flex-col justify-between gap-4 ${
+                        isZero
+                          ? "bg-red-50/50 border-red-200"
+                          : isLow
+                            ? "bg-amber-50/50 border-amber-200"
+                            : "bg-[#FAF6F0]/60 border-[#E6DEC8]"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={acc.coverPhoto}
+                          alt={acc.shortName}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-16 h-16 rounded-xl object-contain bg-white border border-[#E6DEC8] p-1 shrink-0"
+                        />
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#9C5221] block">
+                            {acc.badge}
+                          </span>
+                          <h4 className="font-bold text-sm text-[#2C1E18] leading-snug">
+                            {acc.name}
+                          </h4>
+                          <p className="text-xs font-extrabold text-[#1E4620] mt-1">
+                            PIX: {formatBRL(acc.sizes.UNICO.pricePix)} • Cartão:{" "}
+                            {formatBRL(acc.sizes.UNICO.priceCard)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-[#E6DEC8] flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleAdjustLocalSku(sku, qty - 1)}
+                            className="w-8 h-8 rounded-xl bg-white border border-[#D4C5A9] flex items-center justify-center text-[#2C1E18] hover:bg-[#F3ECE0] cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min={0}
+                            value={qty}
+                            onChange={(e) =>
+                              handleAdjustLocalSku(sku, Number(e.target.value))
+                            }
+                            className="w-14 text-center font-black text-base text-[#2C1E18] bg-white border border-[#D4C5A9] rounded-xl py-1 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAdjustLocalSku(sku, qty + 1)}
+                            className="w-8 h-8 rounded-xl bg-white border border-[#D4C5A9] flex items-center justify-center text-[#2C1E18] hover:bg-[#F3ECE0] cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleSaveStockChanges([
+                                { sku, stockQuantity: 25 },
+                              ])
+                            }
+                            className="px-2.5 py-1.5 rounded-xl bg-[#E9F3E8] text-[#1E4620] text-[11px] font-bold hover:opacity-85 cursor-pointer"
+                          >
+                            25 un.
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleSaveStockChanges([
+                                { sku, stockQuantity: 0 },
+                              ])
+                            }
+                            className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-700 text-[11px] font-bold hover:bg-red-100 cursor-pointer"
+                          >
+                            Zerar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

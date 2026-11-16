@@ -13,6 +13,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: "#configurador", label: "Escolher Rede" },
+    { href: "#acessorios", label: "Acessórios" },
     { href: "#galeria", label: "Fotos & Ambientes" },
     { href: "#qualidade", label: "Tecido & Punhos UV" },
     { href: "#guia-tamanhos", label: "Tamanhos" },

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import {
   PRODUCTS,
-  TACTEL_COLORS,
   calculateShippingByUF,
+  isAccessoryProduct,
+  resolveProductColor,
   type ProductId,
   type SizeCode,
 } from "@/data/products";
@@ -75,12 +76,16 @@ export async function POST(request: Request) {
       if (!product) {
         throw new Error(`Produto inválido: ${rawItem.productId}`);
       }
-      const sizeSpec = product.sizes[rawItem.size];
+      const isAcc = isAccessoryProduct(product.id);
+      const effectiveSize: SizeCode = isAcc ? "UNICO" : rawItem.size;
+      const sizeSpec = product.sizes[effectiveSize] || product.sizes.UNICO;
       if (!sizeSpec) {
         throw new Error(`Tamanho inválido: ${rawItem.size}`);
       }
-      const color =
-        TACTEL_COLORS.find((c) => c.id === rawItem.colorId) || TACTEL_COLORS[0];
+      const color = resolveProductColor(
+        product.id,
+        isAcc ? "padrao" : rawItem.colorId
+      );
 
       const qty = Math.max(1, Math.min(50, Number(rawItem.quantity) || 1));
       const unitPrice =
@@ -91,7 +96,7 @@ export async function POST(request: Request) {
       normalizedItems.push({
         productId: product.id,
         productName: product.shortName,
-        size: sizeSpec.code,
+        size: effectiveSize,
         colorId: color.id,
         colorName: color.name,
         quantity: qty,
@@ -99,9 +104,13 @@ export async function POST(request: Request) {
       });
 
       return {
-        id: `${product.id}-${sizeSpec.code}-${color.id}`,
-        title: `${product.shortName} (Tam. ${sizeSpec.code}) - Cor: ${color.name}`,
-        description: `${product.name} | Medida: ${sizeSpec.clothDimensions} | Punho 2,5mm c/ UV`,
+        id: `${product.id}-${effectiveSize}-${color.id}`,
+        title: isAcc
+          ? `${product.shortName} - ${color.name}`
+          : `${product.shortName} (Tam. ${sizeSpec.code}) - Cor: ${color.name}`,
+        description: isAcc
+          ? `${product.name} | ${sizeSpec.totalLengthWithCords}`
+          : `${product.name} | Medida: ${sizeSpec.clothDimensions} | Punho 2,5mm c/ UV`,
         quantity: qty,
         currency_id: "BRL",
         unit_price: Number(unitPrice.toFixed(2)),

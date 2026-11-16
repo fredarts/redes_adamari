@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   PRODUCTS,
-  TACTEL_COLORS,
+  resolveProductColor,
   type ProductId,
   type SizeCode,
 } from "@/data/products";
@@ -230,10 +230,9 @@ export function resolveCartDetails(
     .map((item) => {
       const product = PRODUCTS[item.productId];
       if (!product) return null;
-      const sizeSpec = product.sizes[item.size];
+      const sizeSpec = product.sizes[item.size] || product.sizes.UNICO;
       if (!sizeSpec) return null;
-      const color =
-        TACTEL_COLORS.find((c) => c.id === item.colorId) || TACTEL_COLORS[0];
+      const color = resolveProductColor(item.productId, item.colorId);
 
       const sku = getSkuKey(item.productId, item.size, item.colorId);
       const availableStock =

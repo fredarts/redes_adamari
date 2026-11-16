@@ -19,13 +19,16 @@ import {
   ShieldCheck,
   Loader2,
   MapPin,
+  Wrench,
 } from "lucide-react";
 import {
+  ACCESSORY_LIST,
   FREE_SHIPPING_THRESHOLD,
   calculateShippingByUF,
   formatBRL,
+  isAccessoryProduct,
 } from "@/data/products";
-import { useCartStore, resolveCartDetails } from "@/store/cartStore";
+import { useCartStore, resolveCartDetails, getSkuKey } from "@/store/cartStore";
 
 interface SandboxResult {
   orderReference: string;
@@ -49,6 +52,7 @@ export function CartDrawer() {
     fetchStock,
     closeDrawer,
     setPaymentMethod,
+    addItem,
     updateQuantity,
     removeItem,
     clearCart,
@@ -322,23 +326,29 @@ export function CartDrawer() {
                     className="p-3.5 rounded-2xl border border-[#E6DEC8] bg-white shadow-warm flex gap-3.5 items-start"
                   >
                     {/* Miniatura da Foto Real + Selo de Cor/Tamanho */}
-                    <div className="w-16 h-16 rounded-2xl shrink-0 relative overflow-hidden border border-[#E6DEC8] bg-[#F5EFE6]">
+                    <div className="w-16 h-16 rounded-2xl shrink-0 relative overflow-hidden border border-[#E6DEC8] bg-white">
                       <img
                         src={
-                          item.product.hasMosquitoNet
-                            ? "/images/rede-mosquiteiro-verde.jpg"
-                            : item.color.photoUrl
+                          isAccessoryProduct(item.productId)
+                            ? item.product.coverPhoto
+                            : item.product.hasMosquitoNet
+                              ? "/images/rede-mosquiteiro-verde.jpg"
+                              : item.color.photoUrl
                         }
                         alt={item.product.shortName}
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full ${
+                          isAccessoryProduct(item.productId)
+                            ? "object-contain p-1"
+                            : "object-cover"
+                        }`}
                       />
                       <span
                         className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black text-white shadow-xs border border-white/30 tactel-swatch-sheen"
                         style={{ backgroundColor: item.color.hex }}
                       >
-                        {item.size}
+                        {item.size === "UNICO" ? "KIT" : item.size}
                       </span>
                     </div>
 
@@ -365,10 +375,14 @@ export function CartDrawer() {
                           />
                           {item.color.name}
                         </span>
-                        <span>•</span>
-                        <span className="font-bold text-[#2C1E18]">
-                          Tam. {item.size}
-                        </span>
+                        {item.size !== "UNICO" && (
+                          <>
+                            <span>•</span>
+                            <span className="font-bold text-[#2C1E18]">
+                              Tam. {item.size}
+                            </span>
+                          </>
+                        )}
                       </div>
 
                       <div className="mt-3 flex items-center justify-between">
@@ -423,6 +437,78 @@ export function CartDrawer() {
                   </div>
                 ))}
               </div>
+
+              {/* Sugestão Compre Junto (Order Bump de Acessórios) */}
+              {(() => {
+                const missingAccessories = ACCESSORY_LIST.filter(
+                  (acc) => !items.some((it) => it.productId === acc.id)
+                );
+                if (missingAccessories.length === 0) return null;
+
+                return (
+                  <div className="p-3.5 rounded-2xl bg-[#FDFBF7] border-2 border-[#E6DEC8] space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold text-[#2C1E18] flex items-center gap-1.5">
+                        <Wrench className="w-3.5 h-3.5 text-[#D95D39]" />
+                        Complete sua Instalação (Compre Junto):
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#9C5221] bg-[#FEF3C7] px-2 py-0.5 rounded-full">
+                        Envio no mesmo frete
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {missingAccessories.map((acc) => {
+                        const sku = getSkuKey(acc.id, "UNICO", "padrao");
+                        const stock = stockLoaded ? (stockMap[sku] ?? 25) : 25;
+                        if (stock <= 0) return null;
+                        const price =
+                          paymentMethod === "pix"
+                            ? acc.sizes.UNICO.pricePix
+                            : acc.sizes.UNICO.priceCard;
+
+                        return (
+                          <div
+                            key={acc.id}
+                            className="p-2.5 rounded-xl bg-white border border-[#EFE8D8] flex items-center justify-between gap-2.5"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={acc.coverPhoto}
+                                alt={acc.shortName}
+                                loading="lazy"
+                                decoding="async"
+                                className="w-11 h-11 rounded-lg object-contain border border-[#EFE8D8] bg-white p-0.5 shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-[#2C1E18] truncate">
+                                  {acc.shortName}
+                                </p>
+                                <p className="text-[11px] font-extrabold text-[#1E4620]">
+                                  + {formatBRL(price)}{" "}
+                                  <span className="text-[10px] font-normal text-[#7A6252]">
+                                    ({acc.badge})
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                addItem(acc.id, "UNICO", "padrao", 1, stock)
+                              }
+                              className="px-3 py-1.5 rounded-xl bg-[#2C1E18] hover:bg-[#D95D39] text-white text-xs font-extrabold shrink-0 transition cursor-pointer"
+                            >
+                              + Levar
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Seletor Rápido: PIX vs Cartão */}
               <div className="p-3.5 rounded-2xl bg-[#F3ECE0] border border-[#E6DEC8] space-y-2">

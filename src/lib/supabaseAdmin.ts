@@ -1,8 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  ACCESSORY_PRODUCT_IDS,
   PRODUCTS,
   TACTEL_COLORS,
   SIZE_ORDER,
+  isAccessoryProduct,
+  resolveProductColor,
   type ProductId,
   type SizeCode,
 } from "@/data/products";
@@ -203,6 +206,28 @@ function createInitialInventoryMap(): Map<string, InventoryItem> {
       }
     }
   }
+
+  // Adiciona os 3 Acessórios de Instalação no mapa de estoque
+  for (const accId of ACCESSORY_PRODUCT_IDS) {
+    const product = PRODUCTS[accId];
+    const color = resolveProductColor(accId, "padrao");
+    const sku = buildSku(accId, "UNICO", "padrao");
+    const initialQty = accId === "corda-nylon" ? 30 : 25;
+
+    map.set(sku, {
+      sku,
+      productId: accId,
+      productName: product.shortName,
+      size: "UNICO",
+      colorId: "padrao",
+      colorName: color.name,
+      colorHex: color.hex,
+      stockQuantity: initialQty,
+      lowStockThreshold: 4,
+      updatedAt: now,
+    });
+  }
+
   return map;
 }
 
@@ -721,16 +746,12 @@ export async function getAllInventory(): Promise<{
         .order("sku", { ascending: true });
 
       if (!error && data && data.length > 0) {
-        const items: InventoryItem[] = [];
-        const stockMap: Record<string, number> = {};
-
         for (const row of data) {
           const productId = row.product_id as ProductId;
           const size = row.size as SizeCode;
           const colorId = row.color_id as string;
           const product = PRODUCTS[productId];
-          const color =
-            TACTEL_COLORS.find((c) => c.id === colorId) || TACTEL_COLORS[0];
+          const color = resolveProductColor(productId, colorId);
 
           const item: InventoryItem = {
             sku: row.sku,
@@ -744,12 +765,16 @@ export async function getAllInventory(): Promise<{
             lowStockThreshold: Number(row.low_stock_threshold) || 3,
             updatedAt: row.updated_at || new Date().toISOString(),
           };
-          items.push(item);
-          stockMap[item.sku] = item.stockQuantity;
           localStore.inventory.set(item.sku, item);
         }
 
-        return { items, stockMap };
+        const allItems = Array.from(localStore.inventory.values());
+        const stockMap: Record<string, number> = {};
+        for (const item of allItems) {
+          stockMap[item.sku] = item.stockQuantity;
+        }
+
+        return { items: allItems, stockMap };
       }
     } catch (err) {
       console.error("[Inventory Supabase Fallback]:", err);
@@ -847,13 +872,17 @@ export async function validateAndDeductStock(
     const available = stockMap[sku] ?? 0;
     if (available < req.quantity) {
       const product = PRODUCTS[req.productId];
-      const color =
-        TACTEL_COLORS.find((c) => c.id === req.colorId) || TACTEL_COLORS[0];
+      const color = resolveProductColor(req.productId, req.colorId);
+      const isAcc = isAccessoryProduct(req.productId);
 
       const message =
         available === 0
-          ? `A variação ${product.shortName} (Tam. ${req.size} • Cor ${color.name}) acabou de esgotar em nosso estoque. Por favor, escolha outra cor ou tamanho.`
-          : `Temos apenas ${available} unidade(s) disponível(is) de ${product.shortName} (Tam. ${req.size} • Cor ${color.name}) em estoque.`;
+          ? isAcc
+            ? `O item ${product.shortName} acabou de esgotar em nosso estoque.`
+            : `A variação ${product.shortName} (Tam. ${req.size} • Cor ${color.name}) acabou de esgotar em nosso estoque. Por favor, escolha outra cor ou tamanho.`
+          : isAcc
+            ? `Temos apenas ${available} unidade(s) disponível(is) de ${product.shortName} em estoque.`
+            : `Temos apenas ${available} unidade(s) disponível(is) de ${product.shortName} (Tam. ${req.size} • Cor ${color.name}) em estoque.`;
 
       return {
         ok: false,
@@ -1589,7 +1618,7 @@ export async function getAdminDashboardAnalytics() {
 
   let totalUnitsSold = 0;
 
-  // 1. Ranking por Modelo
+  // 1. Ranking por Modelo / Produto
   const byProduct: Record<
     ProductId,
     {
@@ -1611,6 +1640,24 @@ export async function getAdminDashboardAnalytics() {
       unitsSold: 0,
       revenue: 0,
     },
+    "gancho-armador": {
+      productId: "gancho-armador",
+      name: PRODUCTS["gancho-armador"].shortName,
+      unitsSold: 0,
+      revenue: 0,
+    },
+    "mola-extensora": {
+      productId: "mola-extensora",
+      name: PRODUCTS["mola-extensora"].shortName,
+      unitsSold: 0,
+      revenue: 0,
+    },
+    "corda-nylon": {
+      productId: "corda-nylon",
+      name: PRODUCTS["corda-nylon"].shortName,
+      unitsSold: 0,
+      revenue: 0,
+    },
   };
 
   // 2. Ranking por Tamanho (M, G, GG, XGG)
@@ -1629,6 +1676,12 @@ export async function getAdminDashboardAnalytics() {
     XGG: {
       size: "XGG",
       label: "Tamanho XGG (Família Gigante)",
+      unitsSold: 0,
+      revenue: 0,
+    },
+    UNICO: {
+      size: "UNICO",
+      label: "Tamanho Único (Acessórios)",
       unitsSold: 0,
       revenue: 0,
     },

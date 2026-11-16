@@ -25,6 +25,7 @@ import {
 } from "@/data/products";
 import { Navbar } from "@/components/Navbar";
 import { ProductConfigurator } from "@/components/ProductConfigurator";
+import { AccessoriesSection } from "@/components/AccessoriesSection";
 import { CartDrawer } from "@/components/CartDrawer";
 
 export default function HomePage() {
@@ -349,6 +350,9 @@ export default function HomePage() {
 
         {/* 2. CONFIGURADOR INTERATIVO DOS 2 PRODUTOS (REDE NORMAL E REDE C/ MOSQUITEIRO) */}
         <ProductConfigurator />
+
+        {/* 2.1. ACESSÓRIOS DE INSTALAÇÃO (GANCHOS ARMADORES, MOLAS E CORDAS DE NYLON) */}
+        <AccessoriesSection />
 
         {/* 3. GALERIA DE ESTILO DE VIDA E AMBIENTES REAIS (#galeria) */}
         <section

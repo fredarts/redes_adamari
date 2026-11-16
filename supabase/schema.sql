@@ -5,16 +5,26 @@
 -- ==============================================================================
 
 -- 1. TABELA DE CONTROLE DE ESTOQUE (INVENTORY)
--- 2 Modelos (rede-tradicional, rede-mosquiteiro) x 4 Tamanhos (M, G, GG, XGG) x 10 Cores = 80 SKUs
+-- 2 Redes (rede-tradicional, rede-mosquiteiro) x 4 Tamanhos (M, G, GG, XGG) x 10 Cores = 80 SKUs
+-- + 3 Acessórios de Instalação (gancho-armador, mola-extensora, corda-nylon) = 83 SKUs
 CREATE TABLE IF NOT EXISTS public.inventory (
   sku TEXT PRIMARY KEY,
-  product_id TEXT NOT NULL CHECK (product_id IN ('rede-tradicional', 'rede-mosquiteiro')),
-  size TEXT NOT NULL CHECK (size IN ('M', 'G', 'GG', 'XGG')),
+  product_id TEXT NOT NULL CHECK (product_id IN ('rede-tradicional', 'rede-mosquiteiro', 'gancho-armador', 'mola-extensora', 'corda-nylon')),
+  size TEXT NOT NULL CHECK (size IN ('M', 'G', 'GG', 'XGG', 'UNICO')),
   color_id TEXT NOT NULL,
   stock_quantity INTEGER NOT NULL DEFAULT 10 CHECK (stock_quantity >= 0),
   low_stock_threshold INTEGER NOT NULL DEFAULT 3 CHECK (low_stock_threshold >= 0),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Caso a tabela já exista com a constraint antiga, atualiza as constraints:
+ALTER TABLE public.inventory DROP CONSTRAINT IF EXISTS inventory_product_id_check;
+ALTER TABLE public.inventory ADD CONSTRAINT inventory_product_id_check
+  CHECK (product_id IN ('rede-tradicional', 'rede-mosquiteiro', 'gancho-armador', 'mola-extensora', 'corda-nylon'));
+
+ALTER TABLE public.inventory DROP CONSTRAINT IF EXISTS inventory_size_check;
+ALTER TABLE public.inventory ADD CONSTRAINT inventory_size_check
+  CHECK (size IN ('M', 'G', 'GG', 'XGG', 'UNICO'));
 
 CREATE INDEX IF NOT EXISTS idx_inventory_product_size_color
   ON public.inventory (product_id, size, color_id);
@@ -161,4 +171,12 @@ CROSS JOIN
     ('azul-marinho'),
     ('roxo-acai')
   ) AS c(color_id)
+ON CONFLICT (sku) DO NOTHING;
+
+-- 7. SEED DOS 3 ACESSÓRIOS DE INSTALAÇÃO (GANCHO ARMADOR, MOLA EXTENSORA E CORDA NYLON)
+INSERT INTO public.inventory (sku, product_id, size, color_id, stock_quantity, low_stock_threshold)
+VALUES
+  ('gancho-armador-UNICO-padrao', 'gancho-armador', 'UNICO', 'padrao', 25, 4),
+  ('mola-extensora-UNICO-padrao', 'mola-extensora', 'UNICO', 'padrao', 25, 4),
+  ('corda-nylon-UNICO-padrao', 'corda-nylon', 'UNICO', 'padrao', 30, 4)
 ON CONFLICT (sku) DO NOTHING;
